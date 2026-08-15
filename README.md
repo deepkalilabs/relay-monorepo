@@ -40,11 +40,17 @@ The backend's Browserbase automation libraries and service remain under
 [`backend/packages/`](backend/packages/). They are not root workspaces and have not been
 extracted or consolidated as part of the monorepo move.
 
-Build and deployment services must use `frontend/` or `backend/` as their working/root
-directory so each project's existing configuration and relative paths remain valid.
+Railway deploys both projects from their isolated `frontend/` and `backend/` roots.
+Project-level infrastructure is declared in [`.railway/railway.ts`](.railway/railway.ts)
+after importing the existing `development` environment. Follow the guarded adoption and
+rollout procedure in [`backend/DEPLOY.md`](backend/DEPLOY.md); do not run
+`railway config apply` as part of ordinary repository verification.
 
 ## Repository decisions
 
 Project documentation remains within its owning directory. The decision to adopt this
 layout is recorded in
 [`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
+Repository-wide decisions continue the frontend ADR sequence. Railway deployment IaC is
+recorded in
+[`frontend/docs/decisions/0021-manage-development-railway-infrastructure-as-code.md`](frontend/docs/decisions/0021-manage-development-railway-infrastructure-as-code.md).
