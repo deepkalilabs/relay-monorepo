@@ -108,17 +108,17 @@ describe("RemoteWorkflowRepository", () => {
     expect(bodies).toEqual([undefined, undefined]);
   });
 
-  it("upgrades legacy Relay workflow documents to the current schema in memory", async () => {
+  it("normalizes previous frontend workflow documents to the current schema in memory", async () => {
     const workflow = createWorkflow();
     workflow.id = crypto.randomUUID();
     const baseUrl = await listen((_request, response) => {
-      sendJson(response, 200, { ...workflow, schemaVersion: "1.2" });
+      sendJson(response, 200, { ...workflow, schemaVersion: "1.4" });
     });
 
     const loaded = await new RemoteWorkflowRepository(baseUrl, credentials).get(workflow.id);
 
     expect(loaded).toEqual(workflow);
-    expect(loaded.schemaVersion).toBe("1.4");
+    expect(loaded.schemaVersion).toBe("1.2");
   });
 
   it("maps conflicts and malformed successful responses to neutral errors", async () => {

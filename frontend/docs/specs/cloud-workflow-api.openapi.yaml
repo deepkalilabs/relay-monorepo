@@ -25,7 +25,7 @@ tags:
 security:
   - BasicAuth: []
 x-contract-semantics:
-  canonicalSchemaVersion: "1.4"
+  canonicalSchemaVersion: "1.2"
   maximumRequestBytes: 1048576
   listOrdering: updatedAt descending
   authentication: Server-held HTTP Basic credentials.
@@ -282,7 +282,7 @@ paths:
 
         The backend generates the UUID and timestamps and returns:
 
-        - `schemaVersion: "1.4"`
+        - `schemaVersion: "1.2"`
         - `name: "Untitled recording"`
         - `status: "draft"`
         - `revision: 1`
@@ -758,7 +758,7 @@ components:
       properties:
         schemaVersion:
           type: string
-          const: "1.4"
+          const: "1.2"
         id:
           type: string
           format: uuid

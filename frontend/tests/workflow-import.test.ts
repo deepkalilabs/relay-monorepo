@@ -47,7 +47,7 @@ describe("workflow file import", () => {
     };
 
     const parsed = parseWorkflowJson(serializeWorkflow(workflow));
-    expect(parsed.schemaVersion).toBe("1.4");
+    expect(parsed.schemaVersion).toBe("1.2");
     expect(parsed.steps[0].waitAfter).toEqual(workflow.steps[0].waitAfter);
   });
 
@@ -56,11 +56,11 @@ describe("workflow file import", () => {
     workflow.steps[0].position = { x: 12, y: 90, frameUrl: "https://widgets.example.com/frame" };
 
     const parsed = parseWorkflowJson(serializeWorkflow(workflow));
-    expect(parsed.schemaVersion).toBe("1.4");
+    expect(parsed.schemaVersion).toBe("1.2");
     expect(parsed.steps[0].position).toEqual(workflow.steps[0].position);
   });
 
-  it("normalizes a version 1.0 workflow as a completed version 1.4 workflow", () => {
+  it("normalizes a version 1.0 workflow as a completed version 1.2 workflow", () => {
     const workflow = exportedWorkflow();
     const legacy = {
       ...workflow,
@@ -73,7 +73,7 @@ describe("workflow file import", () => {
     const parsed = parseWorkflowJson(JSON.stringify(legacy));
 
     expect(parsed).toMatchObject({
-      schemaVersion: "1.4",
+      schemaVersion: "1.2",
       status: "complete",
       revision: 1,
       finishedAt: workflow.updatedAt,
