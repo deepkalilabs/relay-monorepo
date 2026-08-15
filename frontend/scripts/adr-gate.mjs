@@ -106,6 +106,10 @@ function normalizeRepoPath(input) {
   return normalized;
 }
 
+function topLevelPathspec(path) {
+  return `:(top)${path}`;
+}
+
 function normalizeRemoteRef(input) {
   const normalized = input.startsWith("refs/")
     ? input
@@ -135,7 +139,7 @@ function diffEntries(fromOid, toOid, paths = []) {
         fromOid,
         toOid,
         "--",
-        ...paths,
+        ...paths.map(topLevelPathspec),
       ],
       { binary: true },
     ),
@@ -211,10 +215,11 @@ function trackedAdrNumbersAt(commit) {
   const output = git([
     "ls-tree",
     "-r",
+    "--full-tree",
     "--name-only",
     commit,
     "--",
-    directory,
+    topLevelPathspec(directory),
   ]);
   if (!output) return [];
   return output

@@ -147,6 +147,22 @@ describe("ADR pre-push gate", () => {
         "Records the nested project decision.",
       ]),
     );
+    git(repo, "push", "-u", "origin", "feature");
+    commitFile(
+      repo,
+      "frontend/docs/decisions/0002-nested-execution.md",
+      "# ADR 0002: Nested execution\n",
+      "add second nested decision",
+    );
+    expectSuccess(
+      runGate(join(repo, "frontend"), [
+        "review",
+        "--adr",
+        "frontend/docs/decisions/0002-nested-execution.md",
+        "--reason",
+        "Records running the gate from the nested project.",
+      ]),
+    );
     expectSuccess(runGate(repo, ["install"]));
     expect(git(repo, "config", "--get", "core.hooksPath")).toBe(
       "frontend/.githooks",
