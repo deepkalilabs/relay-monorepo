@@ -234,18 +234,6 @@ const LegacyWorkflowStepSchema = z.discriminatedUnion("type", [
   SubmitStepSchema,
 ]);
 
-const SchemaV12WorkflowStepSchema = z.discriminatedUnion("type", [
-  NavigateStepSchema,
-  ClickStepSchema,
-  FillStepSchema,
-  SetDateStepSchema,
-  SelectStepSchema,
-  CheckStepSchema,
-  UncheckStepSchema,
-  KeypressStepSchema,
-  SubmitStepSchema,
-]);
-
 const SchemaV13WorkflowStepSchema = z.discriminatedUnion("type", [
   NavigateStepSchema,
   ClickStepSchema,
@@ -292,23 +280,23 @@ const PreviousWorkflowSchema = RevisionedWorkflowDocumentBase.extend({
   steps: z.array(LegacyWorkflowStepSchema),
 }).strict();
 
-const SchemaV12WorkflowSchema = RevisionedWorkflowDocumentBase.extend({
-  schemaVersion: z.literal("1.2"),
-  steps: z.array(SchemaV12WorkflowStepSchema),
-}).strict();
-
 const SchemaV13WorkflowSchema = RevisionedWorkflowDocumentBase.extend({
   schemaVersion: z.literal("1.3"),
   steps: z.array(SchemaV13WorkflowStepSchema),
 }).strict();
 
+const SchemaV14WorkflowSchema = RevisionedWorkflowDocumentBase.extend({
+  schemaVersion: z.literal("1.4"),
+  steps: z.array(WorkflowStepSchema),
+}).strict();
+
 export const CompatibleWorkflowSchema = z.discriminatedUnion(
   "schemaVersion",
-  [WorkflowSchema, SchemaV13WorkflowSchema, PreviousWorkflowSchema, LegacyWorkflowSchema],
+  [SchemaV14WorkflowSchema, WorkflowSchema, SchemaV13WorkflowSchema, PreviousWorkflowSchema, LegacyWorkflowSchema],
 ).transform(
   (workflow): Workflow => {
     if (workflow.schemaVersion === "1.2") return workflow;
-    if (workflow.schemaVersion === "1.3" || workflow.schemaVersion === "1.1") {
+    if (workflow.schemaVersion === "1.4" || workflow.schemaVersion === "1.3" || workflow.schemaVersion === "1.1") {
       return { ...workflow, schemaVersion: "1.2" };
     }
     return {
