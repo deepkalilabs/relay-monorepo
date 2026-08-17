@@ -37,7 +37,7 @@ def client() -> Iterator[TestClient]:
         basic_auth_username="relay",
         basic_auth_password="test-password",
         bucket="relay-workflows",
-        endpoint="https://storage.railway.app",
+        endpoint="https://s3.example.test",
         access_key_id="test-access-key",
         secret_access_key="test-secret-key",
         region="auto",
@@ -76,7 +76,7 @@ def test_settings_reject_an_empty_shared_password() -> None:
             basic_auth_username="relay",
             basic_auth_password="",
             bucket="relay-workflows",
-            endpoint="https://storage.railway.app",
+            endpoint="https://s3.example.test",
             access_key_id="test-access-key",
             secret_access_key="test-secret-key",
             region="auto",
@@ -84,7 +84,7 @@ def test_settings_reject_an_empty_shared_password() -> None:
         )
 
 
-def test_settings_require_railway_bucket_credentials() -> None:
+def test_settings_require_bucket_credentials() -> None:
     with pytest.raises(ValidationError):
         Settings(
             database_url=DATABASE_URL,
@@ -112,7 +112,7 @@ def test_settings_ignore_dotenv_local(tmp_path, monkeypatch: pytest.MonkeyPatch)
         "BASIC_AUTH_USERNAME=relay\n"
         "BASIC_AUTH_PASSWORD=relay-password\n"
         "BUCKET=relay-workflows\n"
-        "ENDPOINT=https://storage.railway.app\n"
+        "ENDPOINT=https://s3.example.test\n"
         "ACCESS_KEY_ID=test-access-key\n"
         "SECRET_ACCESS_KEY=test-secret-key\n"
         "REGION=auto\n",
@@ -139,13 +139,13 @@ def test_settings_ignore_dotenv_local(tmp_path, monkeypatch: pytest.MonkeyPatch)
     assert settings.basic_auth_username == "relay"
     assert settings.basic_auth_password.get_secret_value() == "relay-password"
     assert settings.bucket == "relay-workflows"
-    assert settings.endpoint == "https://storage.railway.app"
+    assert settings.endpoint == "https://s3.example.test"
     assert settings.access_key_id.get_secret_value() == "test-access-key"
     assert settings.secret_access_key.get_secret_value() == "test-secret-key"
     assert settings.region == "auto"
 
 
-def test_runtime_assembles_the_railway_document_store(
+def test_runtime_assembles_the_s3_document_store(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict = {}
@@ -162,7 +162,7 @@ def test_runtime_assembles_the_railway_document_store(
         basic_auth_username="relay",
         basic_auth_password="test-password",
         bucket="relay-workflows",
-        endpoint="https://storage.railway.app",
+        endpoint="https://s3.example.test",
         access_key_id="test-access-key",
         secret_access_key="test-secret-key",
         region="auto",
@@ -177,7 +177,7 @@ def test_runtime_assembles_the_railway_document_store(
     assert document_store.bucket == "relay-workflows"
     assert captured == {
         "service_name": "s3",
-        "endpoint_url": "https://storage.railway.app",
+        "endpoint_url": "https://s3.example.test",
         "aws_access_key_id": "test-access-key",
         "aws_secret_access_key": "test-secret-key",
         "region_name": "auto",
@@ -398,7 +398,7 @@ def test_unavailable_pool_returns_safe_503() -> None:
         basic_auth_username="relay",
         basic_auth_password="test-password",
         bucket="relay-workflows",
-        endpoint="https://storage.railway.app",
+        endpoint="https://s3.example.test",
         access_key_id="test-access-key",
         secret_access_key="test-secret-key",
         region="auto",
@@ -431,7 +431,7 @@ def test_unexpected_failure_returns_safe_500() -> None:
         basic_auth_username="relay",
         basic_auth_password="test-password",
         bucket="relay-workflows",
-        endpoint="https://storage.railway.app",
+        endpoint="https://s3.example.test",
         access_key_id="test-access-key",
         secret_access_key="test-secret-key",
         region="auto",

@@ -117,8 +117,9 @@ returns `404`, while the file remains on disk for local inspection. Artifact URL
 IDs are sensitive and never enter service logs. The local Inngest adapter does not
 capture screenshots.
 
-For a Railway deployment whose listener is reachable only through private networking,
-deploy the supporting build with screenshots disabled first. After it is healthy, use:
+For a remote deployment whose listener is reachable only through trusted private
+networking, deploy the supporting build with screenshots disabled first. After it is
+healthy, use:
 
 ```dotenv
 AUTOMATION_HOST=0.0.0.0
@@ -126,10 +127,10 @@ AUTOMATION_TRUST_PRIVATE_NETWORK=1
 AUTOMATION_SCREENSHOTS=true
 ```
 
-Keep public networking disabled. Browser callers must resolve the relative thumbnail
-URL against the authenticated public FastAPI gateway and must never contact this
-unauthenticated service directly. The private-network opt-in does not allow Inngest on a
-non-loopback listener.
+Keep the service inaccessible from public networks. Browser callers must resolve the
+relative thumbnail URL against the authenticated public FastAPI gateway and must never
+contact this unauthenticated service directly. The private-network opt-in does not allow
+Inngest on a non-loopback listener.
 
 Batch state is process-local. Up to 100 batches are retained, terminal batches expire
 after one hour, and all state is lost on restart. Accepted workflows may therefore run

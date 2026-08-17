@@ -12,7 +12,7 @@ execution gateway for Browser Memory
 Recorder's canonical workflow documents. A caller such as the recorder's local BFF
 sends complete workflow snapshots over HTTP. The backend authenticates the request,
 validates it against the canonical model, stores the canonical document in a private
-Railway Storage Bucket, and publishes its metadata and active object key in PostgreSQL.
+S3-compatible bucket, and publishes its metadata and active object key in PostgreSQL.
 
 The authenticated FastAPI boundary is the OpenAPI 3.1 contract in [`openapi.yaml`](openapi.yaml).
 It defines three namespace operations and five canonical namespace-scoped workflow
@@ -122,8 +122,8 @@ Browser Memory Recorder / local BFF
           |         Workflow repository
           |          parameterized SQL
           v                 v
- private Railway       PostgreSQL metadata,
- Storage Bucket        summaries, pointers
+ private S3-compatible PostgreSQL metadata,
+ bucket                summaries, pointers
 ```
 
 For UUID-based direct execution, the authenticated FastAPI controller reads the canonical
@@ -190,9 +190,9 @@ batch/run metadata disappear on restart. The Inngest path does not request captu
 [`src/relay_backend/main.py`](src/relay_backend/main.py) builds the FastAPI application:
 
 - The lifespan handler loads environment-backed settings and opens a Psycopg connection
-  pool, an S3-compatible Railway document store, and a non-retrying async automation HTTP
-  client with a 30-second read timeout. Tests constructor-inject services and clients
-  with an in-memory store and avoid creating production dependencies.
+  pool, an S3-compatible document store, and a non-retrying async automation HTTP client
+  with a 30-second read timeout. Tests constructor-inject services and clients with an
+  in-memory store and avoid creating production dependencies.
 - `RequestBodyLimitMiddleware` runs before routing and enforces the 1 MiB body limit
   from the contract, including streamed bodies without a usable `Content-Length`.
 - The workflow router applies shared HTTP Basic authentication to every workflow route.
@@ -338,7 +338,8 @@ relay_backend/
 │       ├── 0011-namespace-scoped-workflows.md
 │       ├── 0012-opaque-execution-schema-version.md
 │       ├── 0013-authenticated-workflow-run-gateway.md
-│       └── 0014-trusted-private-network-screenshots.md
+│       ├── 0014-trusted-private-network-screenshots.md
+│       └── 0015-provider-neutral-deployment-ownership.md
 ├── packages/
 │   ├── automation-core/
 │   │   ├── package.json               Private ESM package metadata and scripts
@@ -372,7 +373,7 @@ relay_backend/
 │       ├── __init__.py                Package marker
 │       ├── main.py                    App factory, lifespan, middleware, error mapping
 │       ├── settings.py                Required environment-backed configuration
-│       ├── document_store.py          Railway S3 object serialization and transport
+│       ├── document_store.py          S3-compatible object serialization and transport
 │       ├── backfill_workflow_documents.py  Resumable legacy JSONB backfill command
 │       ├── auth.py                    Shared Basic authentication dependency
 │       ├── request_limits.py          ASGI request-body size enforcement
@@ -533,11 +534,11 @@ are package markers and contain no runtime behavior.
   and optionally use `TEST_DATABASE_URL` directly from fixture configuration.
 - `AUTOMATION_SERVICE_URL` selects the private run-service base URL and defaults to
   `http://127.0.0.1:8080` for local development.
-- Remote deployments use the Railway private domain, keep screenshots disabled for the
-  first deployment of a supporting build, then set `AUTOMATION_TRUST_PRIVATE_NETWORK=1`
-  with `AUTOMATION_SCREENSHOTS=true`. They keep public networking disabled and run
-  exactly one automation-service replica because all batch and artifact access state is
-  process-local.
+- Remote deployments keep screenshots disabled for the first deployment of a supporting
+  build, then set `AUTOMATION_TRUST_PRIVATE_NETWORK=1` with
+  `AUTOMATION_SCREENSHOTS=true` only behind trusted private networking. They keep the
+  service inaccessible from public networks and run exactly one automation-service
+  replica because all batch and artifact access state is process-local.
 - The Browserbase worker reads `BROWSERBASE_API_KEY` for real runs and optionally
   `BROWSERBASE_PROJECT_ID`, `BROWSERBASE_REGION`, `BROWSERBASE_USE_PROXY`, and
   `BROWSERBASE_VERIFIED`. Validation-only CLI use does not require credentials.
@@ -651,10 +652,11 @@ agree with the code.
 - [`ADR 0007: Add in-memory background batches`](docs/decisions/0007-in-memory-background-batches.md)
 - [`ADR 0008: Unauthenticated local execution service`](docs/decisions/0008-unauthenticated-local-execution-service.md)
 - [`ADR 0009: Local terminal screenshot artifacts`](docs/decisions/0009-local-terminal-screenshot-artifacts.md)
-- [`ADR 0010: Railway workflow document storage`](docs/decisions/0010-railway-workflow-document-storage.md)
+- [`ADR 0010: Railway workflow document storage (historical)`](docs/decisions/0010-railway-workflow-document-storage.md)
 - [`ADR 0012: Treat execution schema versions as opaque`](docs/decisions/0012-opaque-execution-schema-version.md)
 - [`ADR 0013: Add an authenticated direct and batch workflow gateway`](docs/decisions/0013-authenticated-workflow-run-gateway.md)
 - [`ADR 0014: Permit screenshots on an explicitly trusted private listener`](docs/decisions/0014-trusted-private-network-screenshots.md)
+- [`ADR 0015: Keep deployment ownership provider-neutral`](docs/decisions/0015-provider-neutral-deployment-ownership.md)
 
 When a decision changes, add a new sequential record that supersedes the older one.
 Preserve accepted historical records rather than rewriting or deleting their rationale.
