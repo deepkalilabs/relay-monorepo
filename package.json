@@ -1,0 +1,35 @@
+{
+  "name": "relay",
+  "private": true,
+  "engines": {
+    "node": ">=24 <27"
+  },
+  "workspaces": [
+    "frontend",
+    "backend/packages/automation-core",
+    "backend/packages/automation-worker-browserbase",
+    "backend/packages/automation-service-browserbase"
+  ],
+  "overrides": {
+    "@axe-core/playwright": "4.12.1",
+    "@browserbasehq/sdk": "2.16.0",
+    "@playwright/test": "1.61.1",
+    "@testing-library/user-event": "14.6.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint-config-next": "16.2.11",
+    "fastify": "5.11.0",
+    "inngest": "4.15.0",
+    "lucide-react": "1.25.0",
+    "next": "16.2.11",
+    "playwright-core": "1.61.1",
+    "tsx": "4.23.1",
+    "ws": "8.21.1"
+  },
+  "scripts": {
+    "build": "npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm run build --workspace browser-memory-recorder",
+    "test:automation": "npm run build --workspace @relay/automation-core && npm test --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm test --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm test --workspace @relay/automation-service-browserbase",
+    "test:changed": "npm run test:changed --workspace browser-memory-recorder",
+    "typecheck": "npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run typecheck --workspaces --if-present"
+  }
+}
