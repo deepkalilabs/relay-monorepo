@@ -1,10 +1,13 @@
 # Relay Backend agent guide
 
+The root [`AGENTS.md`](../AGENTS.md) is authoritative for Git safety, ADR review,
+repository-wide tooling, and cross-project verification. Read it before this guide.
+
 Relay Backend is a Python 3.12 FastAPI proof of concept that persists Browser Memory
 Recorder workflow documents in a private S3-compatible bucket and their metadata in
 PostgreSQL and proxies authenticated UUID-based direct runs to separate TypeScript packages for
 Browserbase execution and unauthenticated loopback streaming/in-memory batch HTTP transport. Before
-changing the repository, read
+changing this project, read
 [`NAVIGATION.md`](NAVIGATION.md); it is the canonical architecture, ownership, and file
 structure guide.
 
