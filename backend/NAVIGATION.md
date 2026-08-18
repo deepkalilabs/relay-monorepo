@@ -164,7 +164,11 @@ POST /v1/run or /v1/batches (unauthenticated local HTTP)
                              | existing Playwright Page + workflow document
                              v
                   @relay/automation-core
- @relay/workflow-contract -> preflight -> sequential runner
+ privacy-safe facade -> fail-fast sequential runner
+                             |
+                             v
+                    @relay/replay-core
+ @relay/workflow-contract -> provider-neutral replay phases
                              |
                              v
              structured events and terminal result
