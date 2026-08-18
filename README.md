@@ -76,3 +76,7 @@ The shared replay input and canonical schema `1.4` decision is recorded in
 [`frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
 The shared replay execution boundary is recorded in
 [`frontend/docs/decisions/0023-share-replay-execution-primitives.md`](frontend/docs/decisions/0023-share-replay-execution-primitives.md).
+The approved three-increment repository and agent-tooling normalization is recorded in
+[`frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
+and tracked by
+[`docs/plans/active/relay-monorepo-refactor.md`](docs/plans/active/relay-monorepo-refactor.md).
