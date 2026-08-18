@@ -1,8 +1,8 @@
 # Relay
 
 Relay is a multi-project monorepo containing the Browser Memory Recorder frontend and
-the Relay persistence and automation backend. The projects intentionally retain
-independent dependency management, commands, documentation, and deployment boundaries.
+the Relay persistence and automation backend. A private root npm workspace coordinates
+their current Node projects without changing application or deployment ownership.
 
 ## Projects
 
@@ -11,8 +11,20 @@ independent dependency management, commands, documentation, and deployment bound
 | [`frontend/`](frontend/) | Next.js application, local BFF, recorder WebSocket, and interactive replay | [`frontend/README.md`](frontend/README.md) |
 | [`backend/`](backend/) | FastAPI persistence API and the existing Browserbase automation packages | [`backend/README.md`](backend/README.md) |
 
-There is no root Node or Python package. Run package-manager commands from the project
-that owns them.
+The root Node workspace provides cross-project build and verification commands. Use it
+for Node commands in a full repository checkout. During the incremental migration,
+project lockfiles remain available to deployment contexts that receive only their
+owning project directory. Python remains independently managed under `backend/`.
+
+Install and verify all current Node workspaces:
+
+```bash
+nvm use
+npm ci
+npm run typecheck
+npm run test:automation
+npm run test:changed
+```
 
 ## Quick start
 
@@ -48,3 +60,5 @@ directory so each project's existing configuration and relative paths remain val
 Project documentation remains within its owning directory. The decision to adopt this
 layout is recorded in
 [`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
+The additive workspace migration is recorded in
+[`frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).

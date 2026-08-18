@@ -1,6 +1,7 @@
 # Relay monorepo agent guide
 
-This repository contains two independently managed projects. Read the nested agent guide
+This repository contains two application projects coordinated by an additive root Node
+workspace. Read the nested agent guide
 before changing either project:
 
 - [`frontend/AGENTS.md`](frontend/AGENTS.md)
@@ -8,12 +9,11 @@ before changing either project:
 
 ## Repository boundaries
 
-- Keep frontend dependency management, commands, documentation, and deployment files in
-  `frontend/`.
+- Keep frontend package ownership, documentation, and deployment files in `frontend/`.
 - Keep backend dependency management, migrations, contracts, automation packages,
   documentation, and deployment files in `backend/`.
-- Do not add a root package manifest or workspace without a separately reviewed
-  architectural decision.
+- Use the root Node workspace for cross-project orchestration. Retain project lockfiles
+  and project-local deployment commands until a later reviewed migration removes them.
 - Do not extract or consolidate the backend automation libraries as part of unrelated
   frontend or backend work.
 - Keep architectural decisions in the owning project's existing decision directory. The
@@ -32,3 +32,4 @@ before changing either project:
 - Frontend changes: run `npm run test:changed` from `frontend/`.
 - Backend changes: follow the checks in `backend/AGENTS.md`.
 - Cross-project changes: run the applicable checks for both projects.
+- Root-workspace changes: run `npm run typecheck` and the affected root test command.
