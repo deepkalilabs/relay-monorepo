@@ -1,7 +1,8 @@
 # @relay/automation-core
 
-Private, provider-neutral TypeScript automation library for sequential background
-execution of Relay workflow documents. The caller owns the browser and
+Private TypeScript compatibility facade for sequential background execution of Relay
+workflow documents. Provider-neutral Playwright phases come from `@relay/replay-core`.
+The caller owns the browser and
 passes an existing Playwright `Page`; this package does not create browser sessions,
 persist runs, or expose a service API.
 
@@ -26,9 +27,10 @@ export async function runWorkflow(page: Page, document: unknown, signal?: AbortS
 }
 ```
 
-`preflightAutomation(document, startStepId?)` validates the canonical contract, rejects
-duplicate step IDs and empty enabled ranges, selects the starting index, and chooses a
-bootstrap URL when the first enabled step is not a navigation.
+`preflightAutomation(document, startStepId?)` validates the shared executable contract,
+rejects duplicate step IDs and empty enabled ranges, selects the starting index, and
+chooses a bootstrap URL when the first enabled step is not a navigation. The executable
+boundary requires a version string but deliberately treats its value as opaque.
 
 `AutomationRunner` executes the selected range in workflow array order. It skips
 disabled steps and redundant recorded option clicks, stops at the first failure, and
@@ -43,32 +45,36 @@ ordinary fills and date inputs continue to use Playwright's direct `fill()` acti
 Assertion steps are evaluated once after the preceding action has settled.
 `visible` requires one uniquely resolved visible target. `text_contains` applies
 case-insensitive, whitespace-normalized containment to the target's visible text.
+`group_exists` scans a bounded set of visible structural candidates and applies the
+shared contract's repeated-group similarity rules without exposing captured text.
 Assertions emit the `asserting` phase, do not settle afterward, and return only fixed
-privacy-safe failure diagnostics. `schemaVersion` is required string metadata but its
-value does not affect validation or execution admission.
+privacy-safe failure diagnostics.
 
 `AutomationRunnerOptions.stepTimeoutMs` controls navigation, locator, action, and wait
 deadlines. It defaults to 15 seconds; remote consumers can select a longer deadline.
 
 ## Development
 
-Requires Node.js 24 or newer.
+Requires Node.js 24 or newer. Run these commands from the repository root so the shared
+workflow contract and replay core are installed and built before automation-core.
 
 ```bash
 npm ci
-npm run typecheck
-npm test
-npm run build
-npm pack --dry-run
+npm run build --workspace @relay/workflow-contract
+npm run build --workspace @relay/replay-core
+npm run typecheck --workspace @relay/automation-core
+npm test --workspace @relay/automation-core
+npm run build --workspace @relay/automation-core
+npm pack --dry-run --workspace @relay/automation-core
 ```
 
 The port is behavior-derived from `browser_replay` commit
 `bbf6409ae154dc8980b2b9d36e834c2c3b849182`. That repository remains the interactive
 editor replay product; changes here do not modify it.
 
-Execution is divided internally between target/frame resolution, canonical step
-actions, and orchestration/settling. `src/execution.ts` remains the compatibility facade
-for the existing internal test and runner imports.
+`@relay/replay-core` owns target/frame resolution, canonical step actions, settling, and
+waits. `src/execution.ts` remains the privacy-safe compatibility adapter used by the
+existing runner and tests.
 
 ## Deliberate boundaries
 

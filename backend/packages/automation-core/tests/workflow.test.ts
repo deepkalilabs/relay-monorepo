@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
+import conformance from "../../../../packages/workflow-contract/fixtures/conformance.json" with { type: "json" };
 import { WorkflowSchema } from "../src/index.js";
 import { locatorCandidatesForTarget, orderLocatorCandidates } from "../src/workflow.js";
 import { clickStep, workflowWith } from "./fixtures.js";
 
-describe("canonical workflow contract", () => {
-  it("accepts a strict canonical action workflow", () => {
+type JsonContainer = Record<string, unknown> | unknown[];
+
+function conformanceDocument(
+  mutations: Array<{ path: Array<string | number>; value: unknown }>,
+): unknown {
+  const document = structuredClone(conformance.baseDocument) as JsonContainer;
+  for (const mutation of mutations) {
+    let target = document;
+    for (const segment of mutation.path.slice(0, -1)) {
+      target = target[segment as never] as JsonContainer;
+    }
+    target[mutation.path.at(-1) as never] = mutation.value as never;
+  }
+  return document;
+}
+
+describe("executable workflow contract", () => {
+  it("accepts a strict executable action workflow", () => {
     expect(WorkflowSchema.parse(workflowWith([clickStep()]))).toEqual(workflowWith([clickStep()]));
   });
 
@@ -79,6 +96,14 @@ describe("canonical workflow contract", () => {
     expect(() =>
       WorkflowSchema.parse({ ...workflow, steps: [{ ...assertion, waitAfter: { delayMs: 1 } }] }),
     ).toThrow();
+  });
+});
+
+describe("shared executable conformance", () => {
+  it.each(conformance.cases)("matches the executable result for $name", ({ mutations, expected }) => {
+    expect(WorkflowSchema.safeParse(conformanceDocument(mutations)).success).toBe(
+      expected.executable,
+    );
   });
 });
 

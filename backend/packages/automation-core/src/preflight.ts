@@ -1,11 +1,10 @@
-import { WorkflowSchema, type Workflow } from "./workflow.js";
+import {
+  ReplayCoreError,
+  preflightReplay,
+  type ReplayPreflight,
+} from "@relay/replay-core";
 
-export interface AutomationPreflight {
-  workflow: Workflow;
-  startIndex: number;
-  totalSteps: number;
-  bootstrapUrl?: string;
-}
+export type AutomationPreflight = ReplayPreflight;
 
 export class AutomationPreflightError extends Error {
   constructor(message: string) {
@@ -14,51 +13,28 @@ export class AutomationPreflightError extends Error {
   }
 }
 
-function validHttpUrl(value: string | undefined): value is string {
-  if (!value) return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
+function preflightMessage(error: ReplayCoreError): string {
+  switch (error.code) {
+    case "duplicate_step_id":
+      return "Workflow step IDs must be unique.";
+    case "missing_start_step":
+      return "The selected automation step is no longer in this workflow.";
+    case "empty_range":
+      return "The selected automation range has no enabled steps.";
+    case "missing_bootstrap_url":
+      return "Automation needs a recorded HTTP page URL as its starting point.";
+    default:
+      return "Automation preflight failed.";
   }
 }
 
 export function preflightAutomation(input: unknown, startStepId?: string): AutomationPreflight {
-  const workflow = WorkflowSchema.parse(input);
-  const duplicate = workflow.steps.find(
-    (step, index) => workflow.steps.findIndex((candidate) => candidate.id === step.id) !== index,
-  );
-  if (duplicate) throw new AutomationPreflightError("Workflow step IDs must be unique.");
-
-  const startIndex = startStepId
-    ? workflow.steps.findIndex((step) => step.id === startStepId)
-    : 0;
-  if (startIndex < 0) {
-    throw new AutomationPreflightError(
-      "The selected automation step is no longer in this workflow.",
-    );
+  try {
+    return preflightReplay(input, startStepId);
+  } catch (error) {
+    if (error instanceof ReplayCoreError) {
+      throw new AutomationPreflightError(preflightMessage(error));
+    }
+    throw error;
   }
-
-  const range = workflow.steps.slice(startIndex);
-  const firstEnabled = range.find((step) => step.enabled);
-  if (!firstEnabled) {
-    throw new AutomationPreflightError("The selected automation range has no enabled steps.");
-  }
-
-  const bootstrapUrl =
-    firstEnabled.type === "navigate"
-      ? undefined
-      : validHttpUrl(workflow.source.startUrl)
-        ? workflow.source.startUrl
-        : validHttpUrl(firstEnabled.page.url)
-          ? firstEnabled.page.url
-          : undefined;
-  if (firstEnabled.type !== "navigate" && !bootstrapUrl) {
-    throw new AutomationPreflightError(
-      "Automation needs a recorded HTTP page URL as its starting point.",
-    );
-  }
-
-  return { workflow, startIndex, totalSteps: range.length, bootstrapUrl };
 }

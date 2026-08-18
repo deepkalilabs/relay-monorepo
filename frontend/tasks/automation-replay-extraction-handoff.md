@@ -10,26 +10,26 @@ Browserbase lifecycle, transports, persistence, or deployment units.
 The shared workflow contract is a prerequisite and input boundary for the replay engine,
 not the migration's final outcome.
 
-The migration has seven focused increments. Package relocation remains planned, but it
+The migration has six focused increments. Package relocation remains planned, but it
 is a later mechanical follow-up and does not block behavior sharing.
 
 ## Current status
 
 - [x] Increment 1: introduce the root Node workspace.
-- [ ] Increment 2: remove Railway-specific deployment ownership.
-- [ ] Increment 3: establish the replay engine's shared input contract.
-- [ ] Increment 4: switch automation-core to the replay input contract.
-- [ ] Increment 5: align backend persistence with the shared structural contract.
-- [ ] Increment 6: extract the shared replay engine and preserve the headless facade.
-- [ ] Increment 7: switch frontend replay to the shared engine.
+- [x] Increment 2: remove Railway-specific deployment ownership.
+- [x] Increment 3: establish the replay input and canonical schema 1.4 across applications.
+- [x] Increment 4: switch automation-core to the replay input contract.
+- [x] Increment 5: extract the shared replay engine and preserve the headless facade.
+- [ ] Increment 6: switch frontend replay to the shared engine.
 
-Increment 2 is implemented and verified on `codex/remove-railway-deployment`; it is
-awaiting review and commit authorization.
+Increment 2 is complete in commit `7c0e054`. Increment 3 is complete on
+`codex/shared-replay-input`. Increment 4 is complete. Increment 5 is complete on
+`codex/shared-replay-engine`; Increment 6 has not started.
 
 ## Simplifying decisions
 
-1. Keep canonical schema version `1.2`. Do not introduce schema `1.5`, a writer flag, or
-   a stored-document migration without a real incompatible format change.
+1. Use schema version `1.4` for all new canonical writes. Keep compatibility readers for
+   versions `1.0` through `1.3`; do not require a bulk stored-document migration.
 2. Treat document shape, not the version label alone, as the capability boundary.
 3. Keep `backend/packages/automation-core` in place during behavior migration. It remains
    the compatibility facade used by the worker and service.
@@ -74,7 +74,7 @@ decision.
 
 ## Increment 2: Provider-neutral deployment ownership
 
-Status: Implemented and verified; awaiting review and commit authorization.
+Status: Complete in commit `7c0e054`.
 
 Remove checked-in Railway configuration and active Railway instructions. Keep the
 existing private S3-compatible storage and trusted-private-network security boundaries.
@@ -90,7 +90,9 @@ Verification:
 
 Suggested commit: `Remove Railway deployment ownership`.
 
-## Increment 3: Replay engine input contract
+## Increment 3: Replay input and canonical schema 1.4
+
+Status: Complete.
 
 Establish the input boundary required by the shared replay engine. Add
 `packages/workflow-contract` and make it the authoritative TypeScript definition of a
@@ -101,10 +103,11 @@ compatibility re-exports.
 
 Expose three explicit validation boundaries:
 
-- the canonical schema accepts version `1.2` and the complete current action/assertion
+- the canonical schema accepts version `1.4` and the complete current action/assertion
   union;
-- the frontend compatibility reader accepts supported historical labels and normalizes
-  only in memory;
+- the frontend compatibility reader accepts versions `1.0` through `1.3`, including
+  assertion-capable `1.2` documents previously emitted by the frontend, and normalizes
+  only in memory to `1.4`;
 - the executable schema accepts any string version label while enforcing the same
   executable structure, preserving backend ADR 0012.
 
@@ -112,19 +115,26 @@ Generate and check in a JSON Schema artifact for cross-language conformance. Add
 frontend ADR after ADR 0021 that records the shared replay-engine architecture, input
 contract, schema policy, and replay-core boundary.
 
-Do not change serialized output, frontend behavior, backend Python models, or automation
-execution in this increment.
+Switch frontend canonical creation, explicit saves, and exports to schema `1.4`. Expand
+the Python Pydantic models and persistence OpenAPI schema to accept the complete `1.4`
+action/assertion union while retaining read compatibility for stored `1.2` documents.
+New backend drafts and explicit saves write `1.4`; reading an existing document does not
+rewrite its stored object. Do not change revisions, idempotency, object keys, summaries,
+authentication, routes, or automation execution.
 
 Verification:
 
 - shared contract tests and fixture generation check;
 - frontend contract, import, serialization, and repository tests;
 - frontend changed tests, typecheck, and production build;
+- backend model, service, controller, privacy, OpenAPI, lint, and formatting checks;
 - root typecheck and build.
 
-Suggested commit: `Define the shared replay input`.
+Suggested commit: `Share replay input with schema 1.4`.
 
 ## Increment 4: Automation-core input convergence
+
+Status: Complete.
 
 Replace automation-core's duplicate workflow model with `@relay/workflow-contract`.
 Use the executable validation boundary so schema labels remain opaque to headless
@@ -145,27 +155,9 @@ Verification:
 
 Suggested commit: `Use the replay input contract for automation`.
 
-## Increment 5: Backend persistence contract convergence
+## Increment 5: Shared replay engine and headless adoption
 
-Expand the Python Pydantic models and persistence OpenAPI schema for canonical version
-`1.2` to accept the same complete action and assertion union as the shared contract.
-Use the checked-in JSON Schema and shared accept/reject fixtures as conformance inputs;
-Python remains a native runtime implementation and does not import or execute TypeScript.
-
-Do not change revisions, idempotency, object keys, summaries, authentication, routes, or
-canonical version labels. Existing documents require no migration because this expands
-validation without rewriting stored data.
-
-Verification:
-
-- every shared fixture has the same accept/reject result in TypeScript, Pydantic, and
-  OpenAPI validation;
-- backend model, service, controller, privacy, and contract tests;
-- all checks required by `backend/AGENTS.md`.
-
-Suggested commit: `Align persistence with the workflow contract`.
-
-## Increment 6: Shared replay engine and headless adoption
+Status: Complete on `codex/shared-replay-engine`.
 
 Add `packages/replay-core`, the provider-neutral execution layer of the shared replay
 engine. Extract phase operations for preflight, frame and target resolution,
@@ -189,7 +181,7 @@ Verification:
 
 Suggested commit: `Extract the shared replay engine`.
 
-## Increment 7: Frontend replay-engine adoption
+## Increment 6: Frontend replay-engine adoption
 
 Keep `ReplayEngine` as the interactive state machine, but replace its duplicated
 Playwright primitives with replay-core phase calls. Preserve pause, resume, retry, skip,
@@ -211,7 +203,7 @@ Suggested commit: `Use the shared replay engine in frontend`.
 
 ## Deferred follow-up: Relocate automation-core
 
-After Increment 7 is stable, mechanically move
+After Increment 6 is stable, mechanically move
 `backend/packages/automation-core` to `packages/automation-core`. Update workspace,
 consumer, Docker, lockfile, and documentation paths together. Preserve source and tests
 byte-for-byte where practical so Git records a rename.
@@ -233,6 +225,7 @@ Suggested commit: `Relocate automation core`.
 - frontend, automation-core, and Python persistence agree on shared conformance fixtures;
 - both runners use the shared replay engine for provider-neutral Playwright behavior;
 - frontend recovery and background privacy boundaries remain unchanged;
-- no schema-version rollout or stored-document migration is required;
+- canonical writes use schema `1.4`, while existing `1.2` documents remain readable
+  without a bulk migration;
 - duplicate contract and replay implementations are removed only after adoption;
 - relocation remains separately reviewable and may land after the behavior migration.

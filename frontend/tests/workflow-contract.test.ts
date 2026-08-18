@@ -51,7 +51,7 @@ function navigateStep() {
 function workflow(schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4", step: unknown = fillStep()) {
   return {
     schemaVersion,
-    id: "workflow-1",
+    id: "4a3f63dd-c98b-4b3a-b452-5f2aa76022cf",
     name: "Profile workflow",
     ...(schemaVersion === "1.0"
       ? {}
@@ -68,10 +68,10 @@ function workflow(schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4", step: un
 }
 
 describe("workflow parameter binding contract", () => {
-  it("creates canonical workflow schema 1.2 documents", () => {
+  it("creates canonical workflow schema 1.4 documents", () => {
     const created = createWorkflow();
 
-    expect(created.schemaVersion).toBe("1.2");
+    expect(created.schemaVersion).toBe("1.4");
     expect(WorkflowSchema.parse(created)).toEqual(created);
   });
 
@@ -79,7 +79,7 @@ describe("workflow parameter binding contract", () => {
     const step = fillStep();
     delete (step as Partial<typeof step>).parameterBinding;
 
-    expect(WorkflowSchema.safeParse(workflow("1.2", step)).success).toBe(false);
+    expect(WorkflowSchema.safeParse(workflow("1.4", step)).success).toBe(false);
   });
 
   it("rejects fill steps from legacy schema 1.0 and 1.1 workflows", () => {
@@ -100,17 +100,17 @@ describe("workflow parameter binding contract", () => {
     ];
 
     for (const parameterBinding of bindings) {
-      expect(WorkflowSchema.safeParse(workflow("1.2", fillStep(parameterBinding))).success).toBe(true);
+      expect(WorkflowSchema.safeParse(workflow("1.4", fillStep(parameterBinding))).success).toBe(true);
     }
   });
 
   it("caps fixed literals at 10,000 characters", () => {
     expect(WorkflowSchema.safeParse(workflow(
-      "1.2",
+      "1.4",
       fillStep({ source: "fixed", value: "a".repeat(10_000) }),
     )).success).toBe(true);
     expect(WorkflowSchema.safeParse(workflow(
-      "1.2",
+      "1.4",
       fillStep({ source: "fixed", value: "a".repeat(10_001) }),
     )).success).toBe(false);
   });
@@ -122,19 +122,19 @@ describe("workflow parameter binding contract", () => {
       payload: {},
       parameterBinding: { source: "recorded" },
     };
-    expect(WorkflowSchema.safeParse(workflow("1.2", click)).success).toBe(false);
+    expect(WorkflowSchema.safeParse(workflow("1.4", click)).success).toBe(false);
     expect(WorkflowSchema.safeParse(workflow(
-      "1.2",
+      "1.4",
       fillStep({ source: "profile", field: "identity.fullName", value: "Leaked Person" }),
     )).success).toBe(false);
     expect(WorkflowSchema.safeParse(workflow(
-      "1.2",
+      "1.4",
       fillStep({ source: "runtime", value: "Leaked runtime value" }),
     )).success).toBe(false);
   });
 
   it("exposes the canonical binding type on fill steps", () => {
-    const parsed: Workflow = WorkflowSchema.parse(workflow("1.2"));
+    const parsed: Workflow = WorkflowSchema.parse(workflow("1.4"));
     const step = parsed.steps[0];
 
     expect(step?.type === "fill" ? step.parameterBinding.source : null).toBe("recorded");
@@ -175,53 +175,54 @@ describe("workflow assertion contract", () => {
     type: "assertion",
   };
 
-  it("accepts element and group-exists assertions in canonical schema 1.2", () => {
+  it("accepts element and group-exists assertions in canonical schema 1.4", () => {
     for (const step of [
       assertion({ kind: "visible" }),
       assertion({ kind: "text_contains", expected: "ready for review" }),
       groupAssertion,
     ]) {
-      expect(WorkflowSchema.safeParse(workflow("1.2", step)).success).toBe(true);
+      expect(WorkflowSchema.safeParse(workflow("1.4", step)).success).toBe(true);
     }
   });
 
-  it("normalizes schema 1.4 workflows to canonical schema 1.2 without losing assertions", () => {
-    const legacy = workflow("1.4", groupAssertion);
+  it("normalizes schema 1.2 workflows to canonical schema 1.4 without losing assertions", () => {
+    const legacy = workflow("1.2", groupAssertion);
 
     expect(CompatibleWorkflowSchema.parse(legacy)).toEqual({
       ...legacy,
-      schemaVersion: "1.2",
+      schemaVersion: "1.4",
     });
   });
 
   it("keeps group templates structural and requires a repeated capture", () => {
-    expect(WorkflowSchema.safeParse(workflow("1.2", {
+    expect(WorkflowSchema.safeParse(workflow("1.4", {
       ...groupAssertion,
       groupTarget: { ...groupTarget, capturedMatchCount: 1 },
     })).success).toBe(false);
-    expect(WorkflowSchema.safeParse(workflow("1.2", {
+    expect(WorkflowSchema.safeParse(workflow("1.4", {
       ...groupAssertion,
       groupTarget: { ...groupTarget, identity: "Ian Howard Bednowitz" },
     })).success).toBe(false);
-    expect(WorkflowSchema.safeParse(workflow("1.2", {
+    expect(WorkflowSchema.safeParse(workflow("1.4", {
       ...groupAssertion,
       expectation: { kind: "visible" },
     })).success).toBe(false);
   });
 
   it("rejects blank, oversized, and wait-after assertion expectations", () => {
-    const canonical = (step: unknown) => workflow("1.2", step);
+    const canonical = (step: unknown) => workflow("1.4", step);
     expect(WorkflowSchema.safeParse(canonical(assertion({ kind: "text_contains", expected: "   " }))).success).toBe(false);
     expect(WorkflowSchema.safeParse(canonical(assertion({ kind: "text_contains", expected: "a".repeat(1_001) }))).success).toBe(false);
     expect(WorkflowSchema.safeParse(canonical({ ...assertion({ kind: "visible" }), waitAfter: { delayMs: 100 } })).success).toBe(false);
   });
 
-  it("normalizes schema 1.3 and earlier workflows to canonical schema 1.2", () => {
+  it("normalizes schema 1.3 and earlier workflows to canonical schema 1.4", () => {
     for (const schemaVersion of ["1.0", "1.1"] as const) {
-      expect(CompatibleWorkflowSchema.parse(workflow(schemaVersion, navigateStep())).schemaVersion).toBe("1.2");
+      expect(CompatibleWorkflowSchema.parse(workflow(schemaVersion, navigateStep())).schemaVersion).toBe("1.4");
     }
-    expect(CompatibleWorkflowSchema.parse(workflow("1.2")).schemaVersion).toBe("1.2");
-    expect(CompatibleWorkflowSchema.parse(workflow("1.3", assertion({ kind: "visible" }))).schemaVersion).toBe("1.2");
+    expect(CompatibleWorkflowSchema.parse(workflow("1.2")).schemaVersion).toBe("1.4");
+    expect(CompatibleWorkflowSchema.parse(workflow("1.3", assertion({ kind: "visible" }))).schemaVersion).toBe("1.4");
+    expect(CompatibleWorkflowSchema.parse(workflow("1.4")).schemaVersion).toBe("1.4");
   });
 
   it("keeps assertions outside the recorded-action boundary", () => {

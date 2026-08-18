@@ -22,7 +22,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "@relay/replay-core": "file:../../../packages/replay-core",
+    "@relay/workflow-contract": "file:../../../packages/workflow-contract"
   },
   "peerDependencies": {
     "playwright-core": "^1.61.1"

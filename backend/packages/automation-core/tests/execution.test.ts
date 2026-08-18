@@ -25,6 +25,22 @@ function baseStep(order: number) {
   };
 }
 
+function groupAssertionStep(): WorkflowStep {
+  const { target: _target, ...base } = baseStep(0);
+  return {
+    ...base,
+    type: "assertion",
+    groupTarget: {
+      version: 1,
+      algorithm: "structural-token-v1",
+      root: { tagName: "article", role: "article", sharedClasses: ["private-profile-card"] },
+      structureTokens: ["0:article:article", "1:private-header:"],
+      capturedMatchCount: 2,
+    },
+    expectation: { kind: "group_exists" },
+  };
+}
+
 function automationPage() {
   const locator = {
     check: vi.fn(async () => undefined),
@@ -213,6 +229,77 @@ describe("executeStepAction", () => {
     expect(error).toBeInstanceOf(AutomationExecutionError);
     expect((error as Error).message).toBe("The automation assertion did not pass.");
     expect(JSON.stringify(error)).not.toMatch(/private expected|private observed/);
+  });
+
+  it("passes a visible repeated-group assertion with a matching structural template", async () => {
+    const { frame, page } = automationPage();
+    vi.mocked(frame.evaluate).mockResolvedValueOnce({
+      excessivelyBroad: false,
+      candidateCount: 1,
+      candidates: [{
+        visible: true,
+        root: { tagName: "article", role: "article", sharedClasses: ["profile-card"] },
+        structureTokens: ["0:article:article", "1:private-header:"],
+      }],
+    } as never);
+
+    await expect(executeStepAction(page, groupAssertionStep())).resolves.toEqual({
+      locatorKind: "structural-group",
+      attempts: [],
+    });
+
+    expect(frame.evaluate).toHaveBeenCalledOnce();
+  });
+
+  it("returns a fixed privacy-safe failure when no repeated group matches", async () => {
+    const { frame, page } = automationPage();
+    vi.mocked(frame.evaluate).mockResolvedValueOnce({
+      excessivelyBroad: false,
+      candidateCount: 1,
+      candidates: [{
+        visible: true,
+        root: { tagName: "article", role: "article", sharedClasses: ["private-other-card"] },
+        structureTokens: ["0:article:article", "1:private-other:"],
+      }],
+    } as never);
+
+    const error = await executeStepAction(page, groupAssertionStep()).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(AutomationExecutionError);
+    expect((error as Error).message).toBe("The automation assertion did not pass.");
+    expect(JSON.stringify(error)).not.toMatch(/private-profile|private-header|private-other/);
+  });
+
+  it("fails safely when a repeated-group root selector is excessively broad", async () => {
+    const { frame, page } = automationPage();
+    vi.mocked(frame.evaluate).mockResolvedValueOnce({
+      excessivelyBroad: true,
+      candidates: [],
+    } as never);
+
+    const error = await executeStepAction(page, groupAssertionStep()).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(AutomationExecutionError);
+    expect((error as Error).message).toBe("The automation assertion did not pass.");
+    expect((error as AutomationExecutionError).attempts).toEqual([
+      { kind: "structural-group", reason: "The structural candidate limit was exceeded." },
+    ]);
+    expect(JSON.stringify(error)).not.toMatch(/private-profile|private-header/);
+  });
+
+  it("honors cancellation before evaluating a repeated-group assertion", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { frame, page } = automationPage();
+
+    await expect(
+      executeStepAction(page, groupAssertionStep(), controller.signal),
+    ).rejects.toBeInstanceOf(AutomationCancelledError);
+    expect(frame.evaluate).not.toHaveBeenCalled();
   });
 
   it.each([

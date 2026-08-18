@@ -80,7 +80,7 @@ def test_create_replays_the_original_workflow(
     replayed = service.create(key)
 
     assert replayed == created
-    assert created.schema_version == "1.2"
+    assert created.schema_version == "1.4"
     assert created.name == "Untitled recording"
     assert created.status == "draft"
     assert created.revision == 1
@@ -104,6 +104,7 @@ def test_save_preserves_server_fields_and_replays_before_revision_check(
     request = edited_request(created)
     request.workflow.status = WorkflowStatus.COMPLETE
     request.workflow.revision = 99
+    request.workflow.schema_version = "1.2"
     request.workflow.created_at = datetime(2020, 1, 1, tzinfo=UTC)
     save_key = uuid4()
 
@@ -116,6 +117,7 @@ def test_save_preserves_server_fields_and_replays_before_revision_check(
     assert saved.revision == 2
     assert saved.created_at == created.created_at
     assert saved.updated_at == datetime(2026, 7, 30, 12, tzinfo=UTC)
+    assert saved.schema_version == "1.4"
     assert document_store.put_calls == 2
 
 
@@ -274,7 +276,9 @@ def test_legacy_jsonb_document_remains_readable(
     database: Database,
     document_store: InMemoryWorkflowDocumentStore,
 ) -> None:
-    workflow = Workflow.model_validate(workflow_document())
+    document = workflow_document()
+    document["schemaVersion"] = "1.2"
+    workflow = Workflow.model_validate(document)
     summary = to_workflow_summary(workflow)
     with psycopg.connect(DATABASE_URL) as connection:
         namespace_id = connection.execute(
@@ -303,7 +307,9 @@ def test_legacy_jsonb_document_remains_readable(
     service = WorkflowService(database, document_store)
 
     assert service.get(workflow.id) == workflow
+    assert service.get(workflow.id).schema_version == "1.2"
     assert document_store.get_calls == 0
+    assert document_store.put_calls == 0
 
 
 def test_failed_document_write_rolls_back_the_idempotency_claim(
