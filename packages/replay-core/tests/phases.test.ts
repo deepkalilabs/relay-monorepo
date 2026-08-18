@@ -5,6 +5,7 @@ import {
   ReplayCoreError,
   createReplayActivityTracker,
   executeStepAction,
+  openInitialPage,
   waitForAutomaticSettle,
   waitForDelay,
 } from "../src/index.js";
@@ -157,6 +158,43 @@ describe("phase-level replay operations", () => {
 
     await cancelled;
   });
+
+  it.each(["bootstrap", "action", "assertion"] as const)(
+    "cancels a blocked %s provider call promptly",
+    async (operation) => {
+      const { locator, page } = replayPage();
+      const blocked = new Promise<never>(() => undefined);
+      const controller = new AbortController();
+      let providerCall: ReturnType<typeof vi.fn>;
+      let running: Promise<unknown>;
+
+      if (operation === "bootstrap") {
+        providerCall = vi.mocked(page.goto).mockReturnValue(blocked);
+        running = openInitialPage(page, "https://example.com/form", { signal: controller.signal });
+      } else if (operation === "assertion") {
+        providerCall = vi.mocked(locator.innerText).mockReturnValue(blocked);
+        running = executeStepAction(page, {
+          ...baseStep(0),
+          type: "assertion",
+          expectation: { kind: "text_contains", expected: "ready" },
+        }, { signal: controller.signal });
+      } else {
+        providerCall = vi.mocked(locator.click).mockReturnValue(blocked);
+        running = executeStepAction(page, { ...baseStep(0), type: "click" }, {
+          signal: controller.signal,
+        });
+      }
+
+      await vi.waitFor(() => expect(providerCall).toHaveBeenCalledOnce());
+      controller.abort();
+      const result = await Promise.race([
+        running.catch((error: unknown) => error),
+        new Promise((resolve) => setTimeout(() => resolve("timed out"), 100)),
+      ]);
+
+      expect(result).toMatchObject({ code: "cancelled" });
+    },
+  );
 
   it("allows settling to be retried without repeating a successful action", async () => {
     const { locator, page } = replayPage();

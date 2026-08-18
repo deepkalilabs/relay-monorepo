@@ -4,7 +4,7 @@ import type { ServerMessage } from "@/shared/contracts/protocol";
 import type { Workflow, WorkflowStep } from "@/shared/contracts/workflow/domain";
 import { createWorkflow } from "@/shared/contracts/workflow/schema";
 import { applyPositionBefore, preflightReplay, ReplayEngine, resolveTarget, resolveTargetOnce } from "@/server/replay/engine";
-import { isRedundantOptionClickBeforeSelect } from "@/server/replay/redundant-option-click";
+import { isRedundantOptionClickBeforeSelect } from "@relay/replay-core";
 
 const recordedAt = new Date().toISOString();
 const target = { candidates: [{ kind: "testId" as const, value: "target", exact: true }] };
@@ -94,6 +94,11 @@ describe("replay preflight", () => {
     const navigate = { ...baseStep("navigate", 0), type: "navigate" as const, payload: { url: "https://example.com" } };
     expect(() => preflightReplay(workflowWith([navigate]), "missing")).toThrow(/no longer/i);
     expect(() => preflightReplay(workflowWith([navigate, { ...navigate, order: 1 }]))).toThrow(/unique/i);
+  });
+
+  it("rejects a selected range without enabled steps", () => {
+    const disabled = { ...baseStep("click", 0), type: "click" as const, enabled: false };
+    expect(() => preflightReplay(workflowWith([disabled]))).toThrow(/no enabled steps/i);
   });
 });
 
@@ -598,6 +603,105 @@ describe("replay engine", () => {
     expect(messages.at(-1)).toMatchObject({ type: "replay.status", status: "completed" });
   });
 
+  it("pauses cooperatively before the next step and resumes without repeating work", async () => {
+    let finishFirst!: () => void;
+    const click = vi.fn()
+      .mockImplementationOnce(() => new Promise<undefined>((resolve) => {
+        finishFirst = () => resolve(undefined);
+      }))
+      .mockResolvedValue(undefined);
+    const steps: WorkflowStep[] = [
+      { ...baseStep("click", 0), type: "click" },
+      { ...baseStep("click", 1), type: "click" },
+    ];
+    const messages: ServerMessage[] = [];
+    const { page } = replayPage(click);
+    const engine = new ReplayEngine(
+      crypto.randomUUID(),
+      page,
+      preflightReplay(workflowWith(steps)),
+      (message) => messages.push(message),
+    );
+    const running = engine.run();
+
+    await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+    engine.pause();
+    finishFirst();
+    await vi.waitFor(() => expect(messages).toContainEqual(expect.objectContaining({
+      type: "replay.status",
+      status: "paused",
+    })));
+    expect(click).toHaveBeenCalledOnce();
+    engine.resume();
+    await running;
+
+    expect(click).toHaveBeenCalledTimes(2);
+  });
+
+  it("enters manual takeover after failure and treats resume as a retry", async () => {
+    const click = vi.fn()
+      .mockRejectedValueOnce(new Error("not ready"))
+      .mockResolvedValue(undefined);
+    const messages: ServerMessage[] = [];
+    const { page } = replayPage(click);
+    const step: WorkflowStep = { ...baseStep("click", 0), type: "click" };
+    const engine = new ReplayEngine(
+      crypto.randomUUID(),
+      page,
+      preflightReplay(workflowWith([step])),
+      (message) => messages.push(message),
+    );
+    const running = engine.run();
+
+    await vi.waitFor(() => expect(messages).toContainEqual(expect.objectContaining({
+      type: "replay.step",
+      status: "failed",
+    })));
+    engine.takeControl();
+    expect(messages).toContainEqual(expect.objectContaining({
+      type: "replay.status",
+      status: "manual",
+    }));
+    engine.resume();
+    await running;
+
+    expect(click).toHaveBeenCalledTimes(2);
+    expect(messages.at(-1)).toMatchObject({ type: "replay.status", status: "completed" });
+  });
+
+  it("uses fixed action diagnostics without exposing provider messages", async () => {
+    const click = vi.fn().mockRejectedValue(
+      new Error('locator("#private-selector").click failed at https://private.example.com'),
+    );
+    const messages: ServerMessage[] = [];
+    const { page } = replayPage(click);
+    const step: WorkflowStep = { ...baseStep("click", 0), type: "click" };
+    const engine = new ReplayEngine(
+      crypto.randomUUID(),
+      page,
+      preflightReplay(workflowWith([step])),
+      (message) => messages.push(message),
+    );
+
+    const running = engine.run();
+    await vi.waitFor(() => expect(messages.some(
+      (message) => message.type === "replay.step" && message.status === "failed",
+    )).toBe(true));
+    engine.skip();
+    await running;
+
+    const failed = messages.find(
+      (message) => message.type === "replay.step" && message.status === "failed",
+    );
+    expect(failed).toMatchObject({
+      type: "replay.step",
+      phase: "acting",
+      diagnostic: { message: "The replay action could not be completed." },
+    });
+    expect(JSON.stringify(failed)).not.toContain("private-selector");
+    expect(JSON.stringify(failed)).not.toContain("private.example.com");
+  });
+
   it("waits for DOM and request quiet before executing the next step", async () => {
     vi.useFakeTimers();
     try {
@@ -868,5 +972,31 @@ describe("replay engine", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("stops promptly during a blocked action without reporting a recoverable failure", async () => {
+    const click = vi.fn(() => new Promise<undefined>(() => undefined));
+    const { page } = replayPage(click);
+    const messages: ServerMessage[] = [];
+    const step: WorkflowStep = { ...baseStep("click", 0), type: "click" };
+    const engine = new ReplayEngine(
+      crypto.randomUUID(),
+      page,
+      preflightReplay(workflowWith([step])),
+      (message) => messages.push(message),
+    );
+    const running = engine.run();
+
+    await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+    engine.stop();
+    const result = await Promise.race([
+      running.then(() => "stopped"),
+      new Promise((resolve) => setTimeout(() => resolve("timed out"), 100)),
+    ]);
+
+    expect(result).toBe("stopped");
+    expect(messages.some(
+      (message) => message.type === "replay.step" && message.status === "failed",
+    )).toBe(false);
   });
 });

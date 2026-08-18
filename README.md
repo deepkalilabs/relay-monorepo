@@ -57,7 +57,8 @@ uv run uvicorn relay_backend.main:app --reload --no-access-log
 The backend's Browserbase automation libraries and service remain under
 [`backend/packages/`](backend/packages/). Automation-core preserves its fail-fast public
 facade and privacy-safe results while delegating provider-neutral behavior to the shared
-replay engine. Frontend interactive adoption remains the next increment.
+replay engine. The frontend keeps its interactive state machine and delegates the same
+provider-neutral phases to replay-core.
 
 Build and deployment services must use `frontend/` or `backend/` as their working/root
 directory so each project's existing configuration and relative paths remain valid.
@@ -73,3 +74,5 @@ The additive workspace migration is recorded in
 [`frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
 The shared replay input and canonical schema `1.4` decision is recorded in
 [`frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
+The shared replay execution boundary is recorded in
+[`frontend/docs/decisions/0023-share-replay-execution-primitives.md`](frontend/docs/decisions/0023-share-replay-execution-primitives.md).
