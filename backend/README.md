@@ -121,15 +121,11 @@ documents, parameters, batch IDs, artifact IDs, or private service URLs.
 | `uv run pytest` | Run unit, contract, API, and PostgreSQL integration tests |
 | `uv run ruff check src tests migrations` | Lint Python code |
 | `uv run ruff format --check src tests` | Verify formatting |
-| `npm ci --prefix packages/automation-core` | Install the automation library's locked dependencies |
-| `npm test --prefix packages/automation-core` | Run automation contract and execution tests |
-| `npm run build --prefix packages/automation-core` | Build the TypeScript library and declarations |
-| `npm ci --prefix packages/automation-worker-browserbase` | Install the Browserbase worker's locked dependencies after building automation-core |
-| `npm test --prefix packages/automation-worker-browserbase` | Run Browserbase worker tests without creating paid sessions |
-| `npm run build --prefix packages/automation-worker-browserbase` | Build the Browserbase worker library and CLI |
-| `npm ci --prefix packages/automation-service-browserbase` | Install the execution service's locked dependencies after building the worker |
-| `npm test --prefix packages/automation-service-browserbase` | Run HTTP, lifecycle, integration, and privacy tests without paid sessions |
-| `npm run build --prefix packages/automation-service-browserbase` | Build the Fastify service and declarations |
+| `npm ci` (repository root) | Install the shared replay packages and all Node consumers |
+| `npm run test:automation` (repository root) | Check the shared contract and replay core, then run headless consumer tests |
+| `npm run typecheck` (repository root) | Build shared dependencies and typecheck every Node workspace |
+| `npm run build` (repository root) | Build the shared contract, automation packages, and frontend in dependency order |
+| `docker build -f backend/Dockerfile.automation -t relay-automation .` (repository root) | Build the automation service image with its root-owned replay dependencies |
 | `npm start --prefix packages/automation-service-browserbase` | Start the execution service |
 
 Tests use `TEST_DATABASE_URL` when set and otherwise use the local Compose database.
@@ -218,8 +214,11 @@ Controller → Service ───┤
 [`packages/automation-core`](packages/automation-core/README.md) is an independent ESM
 library. A background runner supplies an existing Playwright `Page`, receives
 transport-neutral events and structured results, and remains responsible for browser
-lifecycle and any persistence. The package has no dependency on FastAPI, PostgreSQL,
-Browserbase, or the service's internal persistence model.
+lifecycle and any persistence. It consumes the root `@relay/workflow-contract`
+executable schema and delegates provider-neutral Playwright phases to the root
+`@relay/replay-core` package. Its compatibility facade maps structured core failures to
+privacy-safe background diagnostics. The package has no dependency on FastAPI,
+PostgreSQL, Browserbase, or the service's internal persistence model.
 
 [`packages/automation-worker-browserbase`](packages/automation-worker-browserbase/README.md)
 is the provider-specific server consumer. It validates complete workflows while treating
@@ -227,6 +226,8 @@ the required `schemaVersion` value as opaque metadata,
 resolves explicit run parameters, owns fresh Browserbase session lifecycle, and returns
 privacy-safe events and outcomes. It does not add an execution route to FastAPI or
 persist run state. Visibility and text-containment assertions execute once without retries.
+Repeated-group assertions likewise execute once by comparing bounded, visible structural
+candidates through the shared contract's matching rules.
 
 [`packages/automation-service-browserbase`](packages/automation-service-browserbase/README.md)
 is a separate Fastify process exposing unauthenticated local direct and batch execution APIs.

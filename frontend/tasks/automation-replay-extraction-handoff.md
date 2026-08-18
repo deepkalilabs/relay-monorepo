@@ -18,12 +18,13 @@ is a later mechanical follow-up and does not block behavior sharing.
 - [x] Increment 1: introduce the root Node workspace.
 - [x] Increment 2: remove Railway-specific deployment ownership.
 - [x] Increment 3: establish the replay input and canonical schema 1.4 across applications.
-- [ ] Increment 4: switch automation-core to the replay input contract.
-- [ ] Increment 5: extract the shared replay engine and preserve the headless facade.
+- [x] Increment 4: switch automation-core to the replay input contract.
+- [x] Increment 5: extract the shared replay engine and preserve the headless facade.
 - [ ] Increment 6: switch frontend replay to the shared engine.
 
 Increment 2 is complete in commit `7c0e054`. Increment 3 is complete on
-`codex/shared-replay-input`. Increment 4 has not started.
+`codex/shared-replay-input`. Increment 4 is complete. Increment 5 is complete on
+`codex/shared-replay-engine`; Increment 6 has not started.
 
 ## Simplifying decisions
 
@@ -133,6 +134,8 @@ Suggested commit: `Share replay input with schema 1.4`.
 
 ## Increment 4: Automation-core input convergence
 
+Status: Complete.
+
 Replace automation-core's duplicate workflow model with `@relay/workflow-contract`.
 Use the executable validation boundary so schema labels remain opaque to headless
 execution. Add the missing repeated-group assertion behavior and shared fixture tests.
@@ -153,6 +156,8 @@ Verification:
 Suggested commit: `Use the replay input contract for automation`.
 
 ## Increment 5: Shared replay engine and headless adoption
+
+Status: Complete on `codex/shared-replay-engine`.
 
 Add `packages/replay-core`, the provider-neutral execution layer of the shared replay
 engine. Extract phase operations for preflight, frame and target resolution,

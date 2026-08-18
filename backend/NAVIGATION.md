@@ -164,7 +164,11 @@ POST /v1/run or /v1/batches (unauthenticated local HTTP)
                              | existing Playwright Page + workflow document
                              v
                   @relay/automation-core
-              preflight -> sequential runner
+ privacy-safe facade -> fail-fast sequential runner
+                             |
+                             v
+                    @relay/replay-core
+ @relay/workflow-contract -> provider-neutral replay phases
                              |
                              v
              structured events and terminal result
@@ -179,7 +183,9 @@ capacity that defaults to five. Batch state is not durable and disappears on res
 Neither execution mode shares the Python service's transaction, repository,
 authentication, or persistence infrastructure. The version value is opaque metadata
 and does not affect admission. Assertions resolve one visible target and evaluate once
-in workflow order without retries or post-assertion settling.
+in workflow order without retries or post-assertion settling. Repeated-group assertions
+instead scan bounded visible structural candidates once and apply the shared contract's
+similarity rules.
 
 For direct and batch work, the Browserbase worker can capture the visible viewport after
 automation-core returns and before provider cleanup. The service converts that image to
@@ -437,7 +443,7 @@ are package markers and contain no runtime behavior.
 | [`tests/test_api.py`](tests/test_api.py) | Proves authentication, routes, errors, limits, and served-contract behavior. |
 | [`tests/conftest.py`](tests/conftest.py) | Applies migrations once and cleans workflow, idempotency, and non-default namespace test data. |
 | [`docs/decisions/`](docs/decisions/) | Preserves the rationale and consequences of accepted architecture/security decisions. |
-| [`packages/automation-core/src/workflow.ts`](packages/automation-core/src/workflow.ts) | Defines the strict TypeScript execution contract, opaque schema-version metadata, assertions, and locator ordering. |
+| [`packages/automation-core/src/workflow.ts`](packages/automation-core/src/workflow.ts) | Preserves automation-core's workflow exports while delegating executable validation, opaque schema-version metadata, assertions, and locator ordering to the root shared contract. |
 | [`packages/automation-core/src/preflight.ts`](packages/automation-core/src/preflight.ts) | Validates runner inputs, start selection, enabled ranges, and bootstrap URL choice. |
 | [`packages/automation-core/src/target-resolution.ts`](packages/automation-core/src/target-resolution.ts) | Owns frame selection, locator construction, uniqueness and visibility checks, and recorded element fingerprint validation. |
 | [`packages/automation-core/src/step-actions.ts`](packages/automation-core/src/step-actions.ts) | Owns canonical Playwright actions, combobox input fidelity, assertions, and recorded page-position restoration. |
@@ -556,7 +562,8 @@ are package markers and contain no runtime behavior.
 - [`uv.lock`](uv.lock) pins the resolved dependency graph and should change together
   with dependency declarations.
 - [`packages/automation-core/package-lock.json`](packages/automation-core/package-lock.json)
-  independently locks the TypeScript library's development and runtime dependencies.
+  independently locks the TypeScript library and its root-owned shared-contract dependency
+  for isolated automation image builds.
 - [`packages/automation-worker-browserbase/package-lock.json`](packages/automation-worker-browserbase/package-lock.json)
   independently locks the Browserbase worker and its local automation-core dependency.
 - [`packages/automation-service-browserbase/package-lock.json`](packages/automation-service-browserbase/package-lock.json)
@@ -609,28 +616,21 @@ addition or replacement should be recorded as a new ADR under
 
 ## Local verification
 
-Start PostgreSQL and load the environment as described in [`README.md`](README.md), then
-run:
+Run the Node workspace checks from the repository root so shared dependencies build in
+order:
 
 ```bash
-npm ci --prefix packages/automation-core
-npm run typecheck --prefix packages/automation-core
-npm test --prefix packages/automation-core
-npm run build --prefix packages/automation-core
-npm pack --dry-run ./packages/automation-core
+npm ci
+npm run typecheck
+npm run test:automation
+npm run build
+docker build -f backend/Dockerfile.automation -t relay-automation .
+```
 
-npm ci --prefix packages/automation-worker-browserbase
-npm run typecheck --prefix packages/automation-worker-browserbase
-npm test --prefix packages/automation-worker-browserbase
-npm run build --prefix packages/automation-worker-browserbase
-npm pack --dry-run ./packages/automation-worker-browserbase
+Start PostgreSQL and load the environment as described in [`README.md`](README.md), then
+run the Python checks from `backend/`:
 
-npm ci --prefix packages/automation-service-browserbase
-npm run typecheck --prefix packages/automation-service-browserbase
-npm test --prefix packages/automation-service-browserbase
-npm run build --prefix packages/automation-service-browserbase
-npm pack --dry-run ./packages/automation-service-browserbase
-
+```bash
 uv lock --check
 uv run ruff check src tests migrations
 uv run ruff format --check src tests
