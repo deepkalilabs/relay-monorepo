@@ -18,6 +18,11 @@ const CODE_INTEL_HOST = "127.0.0.1";
 const CODE_INTEL_PORT = 8765;
 const GENERATED_BRANCH_PREFIX = "codex/";
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const ADR_DIRECTORIES = [
+  "docs/decisions",
+  "frontend/docs/decisions",
+  "backend/docs/decisions",
+];
 
 function command(commandName, args, options = {}) {
   const result = spawnSync(commandName, args, {
@@ -270,10 +275,6 @@ function fetchCheckpoint(root, featureBranch) {
 }
 
 function addedAdrs(root, checkpoint) {
-  const decisionsPath = relative(
-    root,
-    resolve(PROJECT_ROOT, "docs/decisions"),
-  ).split(sep).join("/");
   const output = git(
     [
       "diff",
@@ -282,7 +283,7 @@ function addedAdrs(root, checkpoint) {
       checkpoint,
       "HEAD",
       "--",
-      decisionsPath,
+      ...ADR_DIRECTORIES,
     ],
     { cwd: root },
   );

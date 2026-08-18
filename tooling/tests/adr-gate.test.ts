@@ -131,7 +131,7 @@ afterEach(() => {
 });
 
 describe("ADR pre-push gate", () => {
-  it("uses the legacy frontend ADR path and root hook path", () => {
+  it("reviews each owned ADR directory and installs the root hook", () => {
     const { repo } = createRepository();
     mkdirSync(join(repo, "frontend", "docs", "decisions"), { recursive: true });
     mkdirSync(join(repo, ".githooks"), { recursive: true });
@@ -153,19 +153,27 @@ describe("ADR pre-push gate", () => {
       ]),
     );
     git(repo, "push", "-u", "origin", "feature");
-    commitFile(
+    writeRepoFile(
       repo,
       "frontend/docs/decisions/0002-nested-execution.md",
       "# ADR 0002: Nested execution\n",
-      "add second nested decision",
     );
+    writeRepoFile(
+      repo,
+      "docs/decisions/0002-root-execution.md",
+      "# ADR 0002: Root execution\n",
+    );
+    git(repo, "add", ".");
+    git(repo, "commit", "-m", "add owned decisions");
     expectSuccess(
       runGate(join(repo, "frontend"), [
         "review",
         "--adr",
         "frontend/docs/decisions/0002-nested-execution.md",
+        "--adr",
+        "docs/decisions/0002-root-execution.md",
         "--reason",
-        "Records running the gate from the nested project.",
+        "Records decisions from both owning directories.",
       ]),
     );
     expectSuccess(runGate(repo, ["install"]));

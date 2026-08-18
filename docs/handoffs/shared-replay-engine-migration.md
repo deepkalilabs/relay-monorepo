@@ -25,8 +25,7 @@ is a later mechanical follow-up and does not block behavior sharing.
 
 Increment 2 is complete in commit `7c0e054`. Increment 3 is complete on
 `codex/shared-replay-input`. Increment 4 is complete. Increment 5 is complete on
-`codex/shared-replay-engine`. Increment 6 is implemented and verified on
-`codex/frontend-replay-core-adoption`; it remains uncommitted pending authorization.
+`codex/shared-replay-engine`. Increment 6 was merged to `main` by pull request 9.
 
 ## Simplifying decisions
 
@@ -185,7 +184,7 @@ Suggested commit: `Extract the shared replay engine`.
 
 ## Increment 6: Frontend replay-engine adoption
 
-Status: Implemented and verified on `codex/frontend-replay-core-adoption`.
+Status: Merged to `main` by pull request 9.
 
 Implementation handoff:
 [`frontend-replay-core-adoption.md`](frontend-replay-core-adoption.md).

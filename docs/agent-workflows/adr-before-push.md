@@ -32,7 +32,9 @@ git push
 .githooks/pre-push          Git entry point
 tooling/repository/         Review creation and deterministic validation
 tooling/tests/              Temporary-repository integration tests
-*/docs/decisions/           Immutable accepted ADRs during the path transition
+docs/decisions/             Root-owned accepted ADRs
+frontend/docs/decisions/    Recorder and transitional repository ADRs
+backend/docs/decisions/     API-owned accepted ADRs
 AGENTS.md                   Agent authorization and review policy
 ```
 

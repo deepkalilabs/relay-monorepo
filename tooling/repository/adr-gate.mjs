@@ -3,7 +3,6 @@
 import { createHash } from "node:crypto";
 import {
   chmodSync,
-  existsSync,
   mkdirSync,
   readFileSync,
   renameSync,
@@ -15,6 +14,11 @@ import { spawnSync } from "node:child_process";
 const VERSION = 2;
 const ZERO_OID = "0".repeat(40);
 const ADR_FILENAME_PATTERN = /^(\d{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
+const ADR_DIRECTORIES = [
+  "docs/decisions",
+  "frontend/docs/decisions",
+  "backend/docs/decisions",
+];
 
 function git(args, options = {}) {
   const result = spawnSync("git", args, {
@@ -39,13 +43,14 @@ function repoRoot() {
   return git(["rev-parse", "--show-toplevel"]);
 }
 
-function adrDirectory() {
-  const nested = "frontend/docs/decisions";
-  return existsSync(join(repoRoot(), nested)) ? nested : "docs/decisions";
+function adrDirectoryForPath(path) {
+  return ADR_DIRECTORIES.find((directory) =>
+    path.startsWith(`${directory}/`),
+  );
 }
 
-function adrNumber(path, directory = adrDirectory()) {
-  if (!path.startsWith(`${directory}/`)) return null;
+function adrNumber(path, directory = adrDirectoryForPath(path)) {
+  if (!directory || !path.startsWith(`${directory}/`)) return null;
   return ADR_FILENAME_PATTERN.exec(path.slice(directory.length + 1));
 }
 
@@ -174,11 +179,10 @@ function immutableAdrError(paths) {
 }
 
 function assertAcceptedAdrsUnchanged(state) {
-  const directory = adrDirectory();
   const changed = state.entries
     .filter(
       (entry) =>
-        entry.path.startsWith(`${directory}/`) && entry.status !== "A",
+        adrDirectoryForPath(entry.path) && entry.status !== "A",
     )
     .map((entry) => entry.path);
   if (changed.length > 0) throw immutableAdrError(changed);
@@ -186,20 +190,20 @@ function assertAcceptedAdrsUnchanged(state) {
 
 function assertRemoteAdrsPreserved(remoteOid, localOid) {
   if (remoteOid === ZERO_OID) return;
-  const changed = diffEntries(remoteOid, localOid, [adrDirectory()])
+  const changed = diffEntries(remoteOid, localOid, ADR_DIRECTORIES)
     .filter((entry) => entry.status !== "A")
     .map((entry) => entry.path);
   if (changed.length > 0) throw immutableAdrError(changed);
 }
 
 function addedAdrPaths(state) {
-  const directory = adrDirectory();
   return state.entries
     .filter(
       (entry) =>
-        entry.status === "A" && entry.path.startsWith(`${directory}/`),
+        entry.status === "A" && adrDirectoryForPath(entry.path),
     )
     .map((entry) => {
+      const directory = adrDirectoryForPath(entry.path);
       if (!adrNumber(entry.path, directory)) {
         throw new Error(
           `ADR path must match ${directory}/000N-lowercase-slug.md: ${entry.path}`,
@@ -210,8 +214,7 @@ function addedAdrPaths(state) {
     .sort();
 }
 
-function trackedAdrNumbersAt(commit) {
-  const directory = adrDirectory();
+function trackedAdrNumbersAt(commit, directory) {
   const output = git([
     "ls-tree",
     "-r",
@@ -246,21 +249,25 @@ function validateAdrOutcome(paths, state) {
     );
   }
 
-  const expectedStart =
-    trackedAdrNumbersAt(state.mergeBase).reduce(
-      (maximum, number) => Math.max(maximum, number),
-      0,
-    ) + 1;
-  normalized
-    .map((path) => Number(adrNumber(path)[1]))
-    .sort((left, right) => left - right)
-    .forEach((number, index) => {
+  for (const directory of ADR_DIRECTORIES) {
+    const numbers = normalized
+      .filter((path) => adrDirectoryForPath(path) === directory)
+      .map((path) => Number(adrNumber(path, directory)[1]))
+      .sort((left, right) => left - right);
+    if (numbers.length === 0) continue;
+    const expectedStart =
+      trackedAdrNumbersAt(state.mergeBase, directory).reduce(
+        (maximum, number) => Math.max(maximum, number),
+        0,
+      ) + 1;
+    numbers.forEach((number, index) => {
       if (number !== expectedStart + index) {
         throw new Error(
-          `ADR numbering must be contiguous from ${String(expectedStart).padStart(4, "0")}.`,
+          `ADR numbering in ${directory} must be contiguous from ${String(expectedStart).padStart(4, "0")}.`,
         );
       }
     });
+  }
   return normalized;
 }
 

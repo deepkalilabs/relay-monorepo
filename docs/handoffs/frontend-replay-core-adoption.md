@@ -2,15 +2,13 @@
 
 ## Status
 
-Implemented and verified on `codex/frontend-replay-core-adoption` from merge commit
-`250314a`. The work remains uncommitted pending explicit Git authorization.
+Implemented and merged to `main` by pull request 9 from
+`codex/frontend-replay-core-adoption`.
 
 ADR 0023 records the shared replay execution ownership boundary. ADR 0022 remains the
 authoritative shared input and schema decision.
 
-Suggested branch: `codex/frontend-replay-core-adoption`.
-
-Suggested commit: `Use the shared replay engine in frontend`.
+Merged commit: `8da699b` (`Use the shared replay engine in frontend`).
 
 ## Objective
 

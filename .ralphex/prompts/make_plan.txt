@@ -40,7 +40,7 @@ or manual-testing checkboxes. Do not use `### Task` headings in the master plan.
 
 After a draft revision request, incorporate the recorded feedback and emit a new
 PLAN_DRAFT. After acceptance, write the accepted plan to
-{{PLANS_DIR}}/YYYYMMDD-<slug>.md and output exactly:
+{{PLANS_DIR}}/active/YYYYMMDD-<slug>.md and output exactly:
 <<<RALPHEX:PLAN_READY>>>
 
 Do not start implementation. Do not ask whether to proceed after plan creation.
