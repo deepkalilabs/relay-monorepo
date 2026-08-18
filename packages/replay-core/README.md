@@ -16,6 +16,10 @@ failure `detail`; background adapters must never forward that field.
 The package does not own runner sequencing, events, recovery policy, Browserbase
 lifecycle, transport, persistence, screenshots, or user-facing diagnostics.
 
+Automation-core consumes these operations behind its fail-fast facade. The frontend
+`ReplayEngine` consumes them behind its interactive phase checkpoints and translates
+structured failures into frontend-owned diagnostics.
+
 ## Commands
 
 Run from the repository root after installing the workspace:

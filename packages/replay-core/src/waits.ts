@@ -14,6 +14,7 @@ import {
   DEFAULT_SETTLE_TIMEOUT_MS,
   DEFAULT_STEP_TIMEOUT_MS,
   DEFAULT_WAIT_STABLE_MS,
+  raceWithCancellation,
   type ReplayOperationOptions,
 } from "./timing.js";
 
@@ -61,10 +62,23 @@ async function domIsQuiet(page: Page, quietMs: number): Promise<boolean | null> 
   }
 }
 
-export async function waitForAutomaticSettle(
+export function waitForAutomaticSettle(
   page: Page,
   tracker: ReplayActivityTracker,
   options: ReplayOperationOptions & { quietMs?: number } = {},
+): Promise<void> {
+  throwIfCancelled(options.signal, "settling");
+  return raceWithCancellation(
+    waitForAutomaticSettleUncancelled(page, tracker, options),
+    options.signal,
+    "settling",
+  );
+}
+
+async function waitForAutomaticSettleUncancelled(
+  page: Page,
+  tracker: ReplayActivityTracker,
+  options: ReplayOperationOptions & { quietMs?: number },
 ): Promise<void> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_SETTLE_TIMEOUT_MS;
   const quietMs = options.quietMs ?? DEFAULT_SETTLE_QUIET_MS;
@@ -114,12 +128,27 @@ async function locatorHasVisibleMatch(locator: Locator, count: number): Promise<
   return false;
 }
 
-export async function waitForCondition(
+export function waitForCondition(
   page: Page,
   target: ElementTarget,
   state: "visible" | "hidden",
   recordedPageUrl: string,
   options: ReplayOperationOptions & { stableMs?: number } = {},
+): Promise<void> {
+  throwIfCancelled(options.signal, "waiting");
+  return raceWithCancellation(
+    waitForConditionUncancelled(page, target, state, recordedPageUrl, options),
+    options.signal,
+    "waiting",
+  );
+}
+
+async function waitForConditionUncancelled(
+  page: Page,
+  target: ElementTarget,
+  state: "visible" | "hidden",
+  recordedPageUrl: string,
+  options: ReplayOperationOptions & { stableMs?: number },
 ): Promise<void> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_STEP_TIMEOUT_MS;
   const stableMs = options.stableMs ?? DEFAULT_WAIT_STABLE_MS;

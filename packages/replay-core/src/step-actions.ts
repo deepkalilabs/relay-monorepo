@@ -14,6 +14,7 @@ import {
 } from "./errors.js";
 import {
   DEFAULT_STEP_TIMEOUT_MS,
+  raceWithCancellation,
   type ReplayOperationOptions,
 } from "./timing.js";
 import {
@@ -35,7 +36,11 @@ export async function openInitialPage(
   const timeoutMs = options.timeoutMs ?? DEFAULT_STEP_TIMEOUT_MS;
   throwIfCancelled(options.signal, "acting");
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+    await raceWithCancellation(
+      page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs }),
+      options.signal,
+      "acting",
+    );
     throwIfCancelled(options.signal, "acting");
   } catch (error) {
     if (error instanceof ReplayCoreError && error.code === "cancelled") throw error;
@@ -195,10 +200,24 @@ export async function applyPositionBefore(
   }
 }
 
-export async function executeStepAction(
+export function executeStepAction(
   page: Page,
   step: WorkflowStep,
   options: ReplayOperationOptions = {},
+): Promise<ReplayActionResult> {
+  const phase = step.type === "assertion" ? "asserting" : "acting";
+  throwIfCancelled(options.signal, phase);
+  return raceWithCancellation(
+    executeStepActionUncancelled(page, step, options),
+    options.signal,
+    phase,
+  );
+}
+
+async function executeStepActionUncancelled(
+  page: Page,
+  step: WorkflowStep,
+  options: ReplayOperationOptions,
 ): Promise<ReplayActionResult> {
   const phase = step.type === "assertion" ? "asserting" : "acting";
   const timeoutMs = options.timeoutMs ?? DEFAULT_STEP_TIMEOUT_MS;
