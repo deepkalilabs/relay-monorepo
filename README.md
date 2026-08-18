@@ -30,7 +30,29 @@ npm ci
 npm run typecheck
 npm run test:automation
 npm run test:changed
+npm run test:tooling
 ```
+
+## Repository agent workflow
+
+Read the root [`AGENTS.md`](AGENTS.md) and then the nearest project guide before making
+changes. Repository-wide Codex, hook, Ralph, ADR-gate, and code-intelligence support is
+owned by [`.codex/`](.codex/), [`.githooks/`](.githooks/), [`.ralphex/`](.ralphex/), and
+[`tooling/`](tooling/).
+
+From the repository root:
+
+```bash
+uv sync --directory tooling/agent-code-intel
+npm run hooks:install
+npm run ralph:plan -- "add a small feature"
+npm run ralph:run -- docs/plans/active/<slug>.md
+npm run adr:review -- --none --reason "Routine change; no architectural decision."
+```
+
+Active plans, archived plans, handoffs, and the workflow specifications are indexed in
+[`docs/README.md`](docs/README.md). Runtime-generated agent state is ignored and must not
+be used as durable project context.
 
 ## Quick start
 
@@ -67,7 +89,8 @@ from the repository root with `backend/Dockerfile.automation`.
 
 ## Repository decisions
 
-Project documentation remains within its owning directory. The decision to adopt this
+Application documentation remains within its owning directory, while repository-wide
+plans and agent workflows live under [`docs/`](docs/). The decision to adopt the current
 layout is recorded in
 [`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
 The additive workspace migration is recorded in

@@ -2,8 +2,8 @@
 
 - [x] Task 1: Approve the backend plan and assumptions.
   - Acceptance: Batch ownership, polling contract, limits, retention, and non-goals are accepted.
-  - Verify: Human approval of `tasks/background-batch-api-plan.md`.
-  - Files: `tasks/background-batch-api-plan.md`
+  - Verify: Human approval of `docs/plans/archive/automation-service-background-batch-api.md`.
+  - Files: `docs/plans/archive/automation-service-background-batch-api.md`
 
 - [x] Task 2: Record the in-memory batch architecture.
   - Acceptance: ADR 0007 supersedes only the stateless/no-result-lookup portions of ADR 0005 and preserves privacy, worker, and no-retry decisions. ADR 0008 later supersedes its authentication decision.

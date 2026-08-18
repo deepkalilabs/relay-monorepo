@@ -2,8 +2,8 @@
 
 - [ ] Task 1: Approve the frontend plan and Relay dependency.
   - Acceptance: UI/server ownership, API shapes, real-workflow folder behavior, polling, and MVP non-goals are accepted.
-  - Verify: Human approval of `tasks/background-folder-runs-plan.md` and the Relay batch contract.
-  - Files: `tasks/background-folder-runs-plan.md`
+  - Verify: Human approval of `docs/plans/active/browser-recorder-background-folder-runs.md` and the Relay batch contract.
+  - Files: `docs/plans/active/browser-recorder-background-folder-runs.md`
 
 - [ ] Task 2: Specify the thin server proxy with failing tests.
   - Acceptance: Tests cover strict ID validation, full workflow loading, complete-only gating, Relay authentication, no retry, safe errors, and polling passthrough.

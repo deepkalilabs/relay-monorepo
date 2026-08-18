@@ -3,8 +3,8 @@
 - [x] Task 1: Approve the namespace contract and compatibility window.
   - Acceptance: UUID identity, minimal namespace operations, nested canonical routes,
     default namespace behavior, and deprecated flat aliases are approved.
-  - Verify: Human approval of `tasks/plan.md`.
-  - Files: `tasks/plan.md`
+  - Verify: Human approval of `docs/plans/archive/relay-api-namespace-workflows.md`.
+  - Files: `docs/plans/archive/relay-api-namespace-workflows.md`
 
 - [x] Task 2: Specify the public contract and namespace models with failing tests.
   - Acceptance: `openapi.yaml` defines namespace create/list/get, five nested workflow
@@ -59,6 +59,6 @@
   - Acceptance: Cross-namespace probes are indistinguishable from missing resources;
     list paths make no object-store calls; exact replay/stale/concurrent behavior matches
     the flat API; no credentials, keys, or workflow values appear in output or logs.
-  - Verify: Run every command in `tasks/plan.md`, inspect the final diff, and complete a
+  - Verify: Run every command in `docs/plans/archive/relay-api-namespace-workflows.md`, inspect the final diff, and complete a
     multi-axis code review before opening the namespace PR.
   - Files: focused tests only; no planned production scope expansion

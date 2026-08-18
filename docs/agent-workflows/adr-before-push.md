@@ -30,9 +30,9 @@ git push
 
 ```text
 .githooks/pre-push          Git entry point
-scripts/adr-gate.mjs        Review creation and deterministic validation
-tests/adr-gate.test.ts      Temporary-repository integration tests
-docs/decisions/             Immutable accepted ADRs
+tooling/repository/         Review creation and deterministic validation
+tooling/tests/              Temporary-repository integration tests
+*/docs/decisions/           Immutable accepted ADRs during the path transition
 AGENTS.md                   Agent authorization and review policy
 ```
 
@@ -54,7 +54,7 @@ AGENTS.md                   Agent authorization and review policy
 Vitest tests create isolated Git repositories and cover exact reviews, stale
 local and remote refs, divergent ADR removal, ADR addition and immutability,
 branch deletion, hook installation, ungated commits, and Codex bypass denial.
-Run `npm run test:changed` for repository verification.
+Run `npm run test:tooling` for repository-tooling verification.
 
 ## Boundaries and Success Criteria
 

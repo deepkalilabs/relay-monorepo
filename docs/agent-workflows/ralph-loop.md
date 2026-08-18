@@ -10,12 +10,14 @@ merges; the loop owns only its generated feature branch.
 
 ```bash
 npm run ralph:plan -- "<goal>"
-npm run ralph:run -- docs/plans/<slug>.md
+npm run ralph:run -- docs/plans/active/<slug>.md
 ```
 
-Master plans live under `docs/plans/` and use ordered
+Runnable master plans live under `docs/plans/active/` and use ordered
 `### Increment N: title` sections. Every increment contains a few automatable
 checkboxes, including focused verification and `npm run test:changed`.
+Completed plans move to `docs/plans/archive/`; handoff documents live under
+`docs/handoffs/` and are never executable plans.
 
 `ralph:run` derives `codex/<slug>`, creates a private one-task plan for the next
 increment, and invokes Ralphex with the previously published commit as its review
@@ -53,5 +55,5 @@ the repository and result counts are bounded.
 - Loop unit tests cover generated-branch confinement and single-increment plans.
 - A code-intelligence smoke test imports both libraries and answers an ast-grep
   query.
-- Normal agent verification uses only `npm run test:changed`; full-suite and
+- Normal recorder verification uses only `npm run test:changed`; full-suite and
   broad end-to-end matrices require separate operator direction.

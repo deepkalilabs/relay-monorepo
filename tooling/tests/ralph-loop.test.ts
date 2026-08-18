@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertActivePlan,
   assertGeneratedBranch,
   expectedBranch,
   parseIncrements,
@@ -34,17 +35,31 @@ describe("Ralph loop controls", () => {
       resolveProjectPlan(
         "/workspace/relay",
         "/workspace/relay",
-        "docs/plans/add-export.md",
+        "docs/plans/active/add-export.md",
       ),
     ).toEqual({
-      absolute: "/workspace/relay/docs/plans/add-export.md",
-      local: "docs/plans/add-export.md",
-      projectLocal: "docs/plans/add-export.md",
+      absolute: "/workspace/relay/docs/plans/active/add-export.md",
+      local: "docs/plans/active/add-export.md",
+      projectLocal: "docs/plans/active/add-export.md",
     });
   });
 
+  it("runs only named active plans", () => {
+    expect(() =>
+      assertActivePlan("docs/plans/active/add-export.md"),
+    ).not.toThrow();
+    expect(() =>
+      assertActivePlan("docs/plans/archive/add-export.md"),
+    ).toThrow("docs/plans/active");
+    expect(() =>
+      assertActivePlan("docs/handoffs/add-export.md"),
+    ).toThrow("docs/plans/active");
+  });
+
   it("derives a generated feature branch from the plan name", () => {
-    expect(expectedBranch("docs/plans/Add Export.md")).toBe("codex/add-export");
+    expect(expectedBranch("docs/plans/active/Add Export.md")).toBe(
+      "codex/add-export",
+    );
   });
 
   it("rejects every branch outside the generated plan branch", () => {

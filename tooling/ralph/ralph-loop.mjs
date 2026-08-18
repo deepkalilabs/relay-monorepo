@@ -446,12 +446,7 @@ function pushIncrement(root, branch, checkpoint) {
 async function runPlan(planInput) {
   const root = repositoryRoot();
   const plan = resolveProjectPlan(root, PROJECT_ROOT, planInput);
-  if (
-    !plan.projectLocal.startsWith("docs/plans/") ||
-    extname(plan.projectLocal) !== ".md"
-  ) {
-    throw new Error("Master plans must be Markdown files under docs/plans/.");
-  }
+  assertActivePlan(plan.projectLocal);
   if (!existsSync(plan.absolute)) {
     throw new Error(`Plan does not exist: ${plan.local}`);
   }
@@ -522,6 +517,17 @@ async function runPlan(planInput) {
   }
 }
 
+export function assertActivePlan(planPath) {
+  if (
+    !planPath.startsWith("docs/plans/active/") ||
+    extname(planPath) !== ".md"
+  ) {
+    throw new Error(
+      "Runnable master plans must be Markdown files under docs/plans/active/.",
+    );
+  }
+}
+
 export function ralphexPlanArgs(description) {
   return ["--codex", "--plan", description];
 }
@@ -544,7 +550,9 @@ async function main() {
   }
   if (action === "run") {
     if (args.length !== 1) {
-      throw new Error("Usage: npm run ralph:run -- docs/plans/<slug>.md");
+      throw new Error(
+        "Usage: npm run ralph:run -- docs/plans/active/<slug>.md",
+      );
     }
     await runPlan(args[0]);
     return;

@@ -21,7 +21,7 @@ is a later mechanical follow-up and does not block behavior sharing.
 - [x] Increment 4: switch automation-core to the replay input contract.
 - [x] Increment 5: extract the shared replay engine and preserve the headless facade.
 - [x] Increment 6: switch frontend replay to the shared engine. See
-  [`frontend-replay-core-adoption-handoff.md`](frontend-replay-core-adoption-handoff.md).
+  [`frontend-replay-core-adoption.md`](frontend-replay-core-adoption.md).
 
 Increment 2 is complete in commit `7c0e054`. Increment 3 is complete on
 `codex/shared-replay-input`. Increment 4 is complete. Increment 5 is complete on
@@ -188,7 +188,7 @@ Suggested commit: `Extract the shared replay engine`.
 Status: Implemented and verified on `codex/frontend-replay-core-adoption`.
 
 Implementation handoff:
-[`frontend-replay-core-adoption-handoff.md`](frontend-replay-core-adoption-handoff.md).
+[`frontend-replay-core-adoption.md`](frontend-replay-core-adoption.md).
 
 Keep `ReplayEngine` as the interactive state machine, but replace its duplicated
 Playwright primitives with replay-core phase calls. Preserve pause, resume, retry, skip,
