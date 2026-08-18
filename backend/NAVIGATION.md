@@ -13,6 +13,8 @@ Recorder's canonical workflow documents. A caller such as the recorder's local B
 sends complete workflow snapshots over HTTP. The backend authenticates the request,
 validates it against the canonical model, stores the canonical document in a private
 S3-compatible bucket, and publishes its metadata and active object key in PostgreSQL.
+New drafts and explicit saves use schema `1.4`; existing schema `1.2` documents remain
+readable without a bulk migration.
 
 The authenticated FastAPI boundary is the OpenAPI 3.1 contract in [`openapi.yaml`](openapi.yaml).
 It defines three namespace operations and five canonical namespace-scoped workflow

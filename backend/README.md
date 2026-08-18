@@ -9,7 +9,8 @@ authentication. It also exposes authenticated direct-run, batch, and artifact ga
 to the private run service. Organizational namespaces own workflows without acting as
 authorization boundaries. Canonical workflow documents live in a private S3-compatible
 bucket; PostgreSQL stores their active object keys and safe relational metadata. The
-service does not execute workflows itself.
+service does not execute workflows itself. New drafts and explicit saves use canonical
+schema `1.4`; stored schema `1.2` documents remain readable for compatibility.
 
 ## Quick start
 

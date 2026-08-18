@@ -24,7 +24,7 @@ tags:
   - name: Runs
     description: Authenticated workflow resolution and streaming execution gateway.
 x-contract-semantics:
-  canonicalSchemaVersion: "1.2"
+  canonicalSchemaVersion: "1.4"
   maximumRequestBytes: 1048576
   maximumBatchResponseBytes: 1048576
   listOrdering: updatedAt descending
@@ -340,7 +340,7 @@ paths:
 
         The backend generates the UUID and timestamps and returns:
 
-        - `schemaVersion: "1.2"`
+        - `schemaVersion: "1.4"`
         - `name: "Untitled recording"`
         - `status: "draft"`
         - `revision: 1`
@@ -1265,7 +1265,10 @@ components:
       properties:
         schemaVersion:
           type: string
-          const: "1.2"
+          enum:
+            - "1.2"
+            - "1.4"
+          description: Version 1.4 is canonical; version 1.2 remains readable for compatibility.
         id:
           type: string
           format: uuid
@@ -1327,6 +1330,7 @@ components:
         - $ref: "#/components/schemas/UncheckStep"
         - $ref: "#/components/schemas/KeypressStep"
         - $ref: "#/components/schemas/SubmitStep"
+        - $ref: "#/components/schemas/AssertionStep"
       discriminator:
         propertyName: type
         mapping:
@@ -1339,6 +1343,7 @@ components:
           uncheck: "#/components/schemas/UncheckStep"
           keypress: "#/components/schemas/KeypressStep"
           submit: "#/components/schemas/SubmitStep"
+          assertion: "#/components/schemas/AssertionStep"
 
     StepBase:
       type: object
@@ -1562,6 +1567,163 @@ components:
             payload:
               $ref: "#/components/schemas/EmptyPayload"
       unevaluatedProperties: false
+
+    AssertionStep:
+      oneOf:
+        - $ref: "#/components/schemas/ElementAssertionStep"
+        - $ref: "#/components/schemas/GroupExistsAssertionStep"
+
+    AssertionStepBase:
+      type: object
+      required:
+        - id
+        - order
+        - name
+        - enabled
+        - page
+        - metadata
+        - type
+        - expectation
+      properties:
+        id:
+          type: string
+          minLength: 1
+        order:
+          type: integer
+          minimum: 0
+        name:
+          type: string
+          minLength: 1
+        enabled:
+          type: boolean
+        page:
+          $ref: "#/components/schemas/PageDescriptor"
+        position:
+          $ref: "#/components/schemas/ViewportPosition"
+        metadata:
+          $ref: "#/components/schemas/StepMetadata"
+        type:
+          type: string
+          const: assertion
+
+    ElementAssertionStep:
+      allOf:
+        - $ref: "#/components/schemas/AssertionStepBase"
+        - type: object
+          required:
+            - target
+            - expectation
+          properties:
+            target:
+              $ref: "#/components/schemas/ReplayableElementTarget"
+            expectation:
+              oneOf:
+                - $ref: "#/components/schemas/VisibleAssertionExpectation"
+                - $ref: "#/components/schemas/TextContainsAssertionExpectation"
+      unevaluatedProperties: false
+
+    GroupExistsAssertionStep:
+      allOf:
+        - $ref: "#/components/schemas/AssertionStepBase"
+        - type: object
+          required:
+            - groupTarget
+            - expectation
+          properties:
+            groupTarget:
+              $ref: "#/components/schemas/RepeatedGroupTemplate"
+            expectation:
+              $ref: "#/components/schemas/GroupExistsAssertionExpectation"
+      unevaluatedProperties: false
+
+    VisibleAssertionExpectation:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+      properties:
+        kind:
+          type: string
+          const: visible
+
+    TextContainsAssertionExpectation:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - expected
+      properties:
+        kind:
+          type: string
+          const: text_contains
+        expected:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: ".*\\S.*"
+
+    GroupExistsAssertionExpectation:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+      properties:
+        kind:
+          type: string
+          const: group_exists
+
+    RepeatedGroupTemplate:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - algorithm
+        - root
+        - structureTokens
+        - capturedMatchCount
+      properties:
+        version:
+          type: integer
+          const: 1
+        algorithm:
+          type: string
+          const: structural-token-v1
+        frameUrl:
+          type: string
+        root:
+          $ref: "#/components/schemas/RepeatedGroupRoot"
+        structureTokens:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+            pattern: ".*\\S.*"
+        capturedMatchCount:
+          type: integer
+          minimum: 2
+
+    RepeatedGroupRoot:
+      type: object
+      additionalProperties: false
+      required:
+        - tagName
+        - sharedClasses
+      properties:
+        tagName:
+          type: string
+          minLength: 1
+          pattern: ".*\\S.*"
+        role:
+          type: string
+          minLength: 1
+          pattern: ".*\\S.*"
+        sharedClasses:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            pattern: ".*\\S.*"
 
     EmptyPayload:
       type: object

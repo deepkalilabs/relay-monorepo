@@ -16,6 +16,11 @@ for Node commands in a full repository checkout. During the incremental migratio
 project lockfiles remain available to deployment contexts that receive only their
 owning project directory. Python remains independently managed under `backend/`.
 
+The shared replay input contract lives in
+[`packages/workflow-contract/`](packages/workflow-contract/) and is consumed through the
+root workspace. Automation packages remain physically owned by `backend/` during the
+incremental replay-engine migration.
+
 Install and verify all current Node workspaces:
 
 ```bash
@@ -49,8 +54,8 @@ uv run uvicorn relay_backend.main:app --reload --no-access-log
 ```
 
 The backend's Browserbase automation libraries and service remain under
-[`backend/packages/`](backend/packages/). They are not root workspaces and have not been
-extracted or consolidated as part of the monorepo move.
+[`backend/packages/`](backend/packages/). Their source has not been extracted or
+consolidated as part of the shared-contract increment.
 
 Build and deployment services must use `frontend/` or `backend/` as their working/root
 directory so each project's existing configuration and relative paths remain valid.
@@ -62,3 +67,5 @@ layout is recorded in
 [`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
 The additive workspace migration is recorded in
 [`frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
+The shared replay input and canonical schema `1.4` decision is recorded in
+[`frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).

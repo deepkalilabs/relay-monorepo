@@ -1,0 +1,91 @@
+{
+  "baseDocument": {
+    "schemaVersion": "1.4",
+    "id": "4a3f63dd-c98b-4b3a-b452-5f2aa76022cf",
+    "name": "Shared replay input",
+    "status": "complete",
+    "revision": 1,
+    "createdAt": "2026-08-17T10:00:00+02:00",
+    "updatedAt": "2026-08-17T10:01:00+02:00",
+    "finishedAt": "2026-08-17T10:01:00+02:00",
+    "source": { "provider": "browserbase", "sessionId": "fixture-session", "startUrl": "https://example.test" },
+    "steps": [
+      {
+        "id": "navigate-home", "order": 0, "name": "Open home", "enabled": true,
+        "page": { "id": "page-home", "url": "https://example.test" },
+        "metadata": { "recordedAt": "2026-08-17T10:00:00+02:00", "origin": "recorded", "sensitive": false },
+        "waitAfter": { "delayMs": 0, "condition": { "state": "visible", "target": { "selector": "body" } } },
+        "type": "navigate", "payload": { "url": "https://example.test" }
+      },
+      {
+        "id": "assert-ready", "order": 1, "name": "Ready text exists", "enabled": true,
+        "page": { "id": "page-home", "url": "https://example.test" },
+        "target": { "candidates": [{ "kind": "role", "value": "status", "name": "Ready", "exact": true }] },
+        "metadata": { "recordedAt": "2026-08-17T10:00:30+02:00", "origin": "manual", "sensitive": false },
+        "type": "assertion", "expectation": { "kind": "text_contains", "expected": "ready" }
+      },
+      {
+        "id": "assert-profiles", "order": 2, "name": "Profiles exist", "enabled": true,
+        "page": { "id": "page-home", "url": "https://example.test" },
+        "metadata": { "recordedAt": "2026-08-17T10:01:00+02:00", "origin": "manual", "sensitive": false },
+        "type": "assertion",
+        "groupTarget": {
+          "version": 1, "algorithm": "structural-token-v1",
+          "root": { "tagName": "article", "role": "article", "sharedClasses": ["profile-card"] },
+          "structureTokens": ["0:article:article", "1:header:"], "capturedMatchCount": 2
+        },
+        "expectation": { "kind": "group_exists" }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "canonical 1.4 actions and assertion families", "mutations": [],
+      "expected": { "canonical": true, "compatible": true, "normalizedVersion": "1.4", "executable": true, "persistence": true }
+    },
+    {
+      "name": "historical assertion-capable 1.2", "mutations": [{ "path": ["schemaVersion"], "value": "1.2" }],
+      "expected": { "canonical": false, "compatible": true, "normalizedVersion": "1.4", "executable": true, "persistence": true }
+    },
+    {
+      "name": "opaque executable version", "mutations": [{ "path": ["schemaVersion"], "value": "recorder-next" }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": true, "persistence": false }
+    },
+    {
+      "name": "unexpected nested page field", "mutations": [{ "path": ["steps", 0, "page", "unexpected"], "value": true }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "element assertion without a locator", "mutations": [{ "path": ["steps", 1, "target"], "value": {} }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "replay wait condition without a locator", "mutations": [{ "path": ["steps", 0, "waitAfter", "condition", "target"], "value": {} }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "unexpected locator-candidate field", "mutations": [{ "path": ["steps", 1, "target", "candidates", 0, "unexpected"], "value": true }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "group assertion mixed with an element target", "mutations": [{ "path": ["steps", 2, "target"], "value": { "selector": ".profile" } }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "invalid workflow UUID", "mutations": [{ "path": ["id"], "value": "workflow-1" }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "timestamp without an offset", "mutations": [{ "path": ["updatedAt"], "value": "2026-08-17T10:01:00" }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "blank repeated-group shared class", "mutations": [{ "path": ["steps", 2, "groupTarget", "root", "sharedClasses", 0], "value": "   " }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "blank repeated-group structure token", "mutations": [{ "path": ["steps", 2, "groupTarget", "structureTokens", 0], "value": "   " }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    }
+  ]
+}
