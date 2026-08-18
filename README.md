@@ -16,6 +16,12 @@ for Node commands in a full repository checkout. During the incremental migratio
 project lockfiles remain available to deployment contexts that receive only their
 owning project directory. Python remains independently managed under `backend/`.
 
+The shared replay input contract lives in
+[`packages/workflow-contract/`](packages/workflow-contract/), and provider-neutral
+Playwright phases live in [`packages/replay-core/`](packages/replay-core/). Both are
+consumed through the root workspace. Automation-core delegates execution to replay-core
+while remaining physically owned by `backend/` during the incremental migration.
+
 Install and verify all current Node workspaces:
 
 ```bash
@@ -49,11 +55,14 @@ uv run uvicorn relay_backend.main:app --reload --no-access-log
 ```
 
 The backend's Browserbase automation libraries and service remain under
-[`backend/packages/`](backend/packages/). They are not root workspaces and have not been
-extracted or consolidated as part of the monorepo move.
+[`backend/packages/`](backend/packages/). Automation-core preserves its fail-fast public
+facade and privacy-safe results while delegating provider-neutral behavior to the shared
+replay engine. Frontend interactive adoption remains the next increment.
 
 Build and deployment services must use `frontend/` or `backend/` as their working/root
 directory so each project's existing configuration and relative paths remain valid.
+The automation image is the exception: because it consumes a root package, build it
+from the repository root with `backend/Dockerfile.automation`.
 
 ## Repository decisions
 
@@ -62,3 +71,5 @@ layout is recorded in
 [`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
 The additive workspace migration is recorded in
 [`frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
+The shared replay input and canonical schema `1.4` decision is recorded in
+[`frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).

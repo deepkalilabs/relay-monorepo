@@ -7,9 +7,10 @@ The FastAPI service implements the repository's `openapi.yaml`, including atomic
 revisions, global idempotency, privacy-safe summaries, and shared HTTP Basic
 authentication. It also exposes authenticated direct-run, batch, and artifact gateways
 to the private run service. Organizational namespaces own workflows without acting as
-authorization boundaries. Canonical workflow documents live in a private Railway Storage Bucket;
-PostgreSQL stores their active object keys and safe relational metadata. The service does
-not execute workflows itself.
+authorization boundaries. Canonical workflow documents live in a private S3-compatible
+bucket; PostgreSQL stores their active object keys and safe relational metadata. The
+service does not execute workflows itself. New drafts and explicit saves use canonical
+schema `1.4`; stored schema `1.2` documents remain readable for compatibility.
 
 ## Quick start
 
@@ -18,7 +19,7 @@ Requirements:
 - Python 3.12 or newer
 - [uv](https://docs.astral.sh/uv/)
 - Docker with Compose
-- A private Railway Storage Bucket and its S3-compatible credentials
+- A private S3-compatible bucket and its credentials
 - Node.js 24 or newer for automation packages
 
 ```bash
@@ -120,15 +121,11 @@ documents, parameters, batch IDs, artifact IDs, or private service URLs.
 | `uv run pytest` | Run unit, contract, API, and PostgreSQL integration tests |
 | `uv run ruff check src tests migrations` | Lint Python code |
 | `uv run ruff format --check src tests` | Verify formatting |
-| `npm ci --prefix packages/automation-core` | Install the automation library's locked dependencies |
-| `npm test --prefix packages/automation-core` | Run automation contract and execution tests |
-| `npm run build --prefix packages/automation-core` | Build the TypeScript library and declarations |
-| `npm ci --prefix packages/automation-worker-browserbase` | Install the Browserbase worker's locked dependencies after building automation-core |
-| `npm test --prefix packages/automation-worker-browserbase` | Run Browserbase worker tests without creating paid sessions |
-| `npm run build --prefix packages/automation-worker-browserbase` | Build the Browserbase worker library and CLI |
-| `npm ci --prefix packages/automation-service-browserbase` | Install the execution service's locked dependencies after building the worker |
-| `npm test --prefix packages/automation-service-browserbase` | Run HTTP, lifecycle, integration, and privacy tests without paid sessions |
-| `npm run build --prefix packages/automation-service-browserbase` | Build the Fastify service and declarations |
+| `npm ci` (repository root) | Install the shared replay packages and all Node consumers |
+| `npm run test:automation` (repository root) | Check the shared contract and replay core, then run headless consumer tests |
+| `npm run typecheck` (repository root) | Build shared dependencies and typecheck every Node workspace |
+| `npm run build` (repository root) | Build the shared contract, automation packages, and frontend in dependency order |
+| `docker build -f backend/Dockerfile.automation -t relay-automation .` (repository root) | Build the automation service image with its root-owned replay dependencies |
 | `npm start --prefix packages/automation-service-browserbase` | Start the execution service |
 
 Tests use `TEST_DATABASE_URL` when set and otherwise use the local Compose database.
@@ -148,11 +145,11 @@ docker compose down --volumes
 | `DATABASE_URL` | Psycopg PostgreSQL connection URL |
 | `BASIC_AUTH_USERNAME` | Shared HTTP Basic username |
 | `BASIC_AUTH_PASSWORD` | Shared HTTP Basic password |
-| `BUCKET` | Railway bucket's globally unique S3 API name |
-| `ENDPOINT` | Railway S3 endpoint, normally `https://storage.railway.app` |
-| `ACCESS_KEY_ID` | Private Railway bucket access-key ID |
-| `SECRET_ACCESS_KEY` | Private Railway bucket secret access key |
-| `REGION` | Railway bucket region, normally `auto` |
+| `BUCKET` | Private bucket's S3 API name |
+| `ENDPOINT` | S3-compatible endpoint URL |
+| `ACCESS_KEY_ID` | Private bucket access-key ID |
+| `SECRET_ACCESS_KEY` | Private bucket secret access key |
+| `REGION` | Object-store region |
 | `AUTOMATION_SERVICE_URL` | Private Browserbase run-service base URL; defaults to `http://127.0.0.1:8080` |
 | `TEST_DATABASE_URL` | Optional PostgreSQL URL used by tests |
 | `BROWSERBASE_API_KEY` | Browserbase worker credential; required only for real runs |
@@ -173,16 +170,15 @@ docker compose down --volumes
 
 No credentials are built into the application. Copy `.env.example` to the ignored
 `.env` file, replace the example password, and populate the service-specific secrets
-you use. The sample includes the intended Railway private-listener screenshot values;
-follow [`DEPLOY.md`](DEPLOY.md) to roll out the supporting build with screenshots
-disabled before enabling them. Other optional overrides use the runtime defaults listed
-above.
+you use. The sample includes trusted-private-listener screenshot values; deploy the
+supporting build with screenshots disabled before enabling them. Other optional
+overrides use the runtime defaults listed above.
 
-### Railway document-store rollout
+### S3-compatible document-store rollout
 
-Create a private Storage Bucket in each Railway environment and auto-inject its `BUCKET`,
-`ENDPOINT`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, and `REGION` variables into the API
-service. Deploy the migration and dual-read application before running:
+Create a private bucket in each environment and provide its `BUCKET`, `ENDPOINT`,
+`ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, and `REGION` variables to the API service. Deploy
+the migration and dual-read application before running:
 
 ```bash
 uv run python -m relay_backend.backfill_workflow_documents --batch-size 100
@@ -200,7 +196,7 @@ The code uses explicit layers without framework-heavy abstractions:
 ```text
                          ┌→ Data repository → PostgreSQL metadata and summaries
 Controller → Service ───┤
-                         └→ Document store → private Railway Storage Bucket
+                         └→ Document store → private S3-compatible bucket
 ```
 
 - Controllers translate HTTP requests and responses only.
@@ -218,8 +214,11 @@ Controller → Service ───┤
 [`packages/automation-core`](packages/automation-core/README.md) is an independent ESM
 library. A background runner supplies an existing Playwright `Page`, receives
 transport-neutral events and structured results, and remains responsible for browser
-lifecycle and any persistence. The package has no dependency on FastAPI, PostgreSQL,
-Browserbase, or the service's internal persistence model.
+lifecycle and any persistence. It consumes the root `@relay/workflow-contract`
+executable schema and delegates provider-neutral Playwright phases to the root
+`@relay/replay-core` package. Its compatibility facade maps structured core failures to
+privacy-safe background diagnostics. The package has no dependency on FastAPI,
+PostgreSQL, Browserbase, or the service's internal persistence model.
 
 [`packages/automation-worker-browserbase`](packages/automation-worker-browserbase/README.md)
 is the provider-specific server consumer. It validates complete workflows while treating
@@ -227,6 +226,8 @@ the required `schemaVersion` value as opaque metadata,
 resolves explicit run parameters, owns fresh Browserbase session lifecycle, and returns
 privacy-safe events and outcomes. It does not add an execution route to FastAPI or
 persist run state. Visibility and text-containment assertions execute once without retries.
+Repeated-group assertions likewise execute once by comparing bounded, visible structural
+candidates through the shared contract's matching rules.
 
 [`packages/automation-service-browserbase`](packages/automation-service-browserbase/README.md)
 is a separate Fastify process exposing unauthenticated local direct and batch execution APIs.
@@ -237,9 +238,9 @@ same five-slot default capacity. The process does not call the persistence API o
 PostgreSQL, and all batch state disappears on restart. Direct and batch terminal
 outcomes may include a one-hour relative thumbnail URL backed by a compressed file in
 `.relay/artifacts`; files persist for manual cleanup, but URL access does not survive a
-restart. In Railway, the browser resolves that URL against the authenticated public
-FastAPI gateway, which proxies the image to the private Node service. The browser never
-contacts the Node service directly. The Inngest path does not capture screenshots.
+restart. In remote deployments, the browser resolves that URL against the authenticated
+public FastAPI gateway, which proxies the image to the private Node service. The browser
+never contacts the Node service directly. The Inngest path does not capture screenshots.
 The Node service still does not read persistence; only FastAPI performs UUID resolution.
 Remote deployments must keep this service private and at exactly one replica because
 batch state, polling snapshots, and thumbnail capabilities are process-local.
@@ -248,8 +249,10 @@ Successful idempotency records are retained indefinitely. A replay with the same
 method, path, and validated canonical JSON returns the original response even if the
 workflow has since changed. Different content returns `409 idempotency_conflict`.
 
-See [ADR 0010](docs/decisions/0010-railway-workflow-document-storage.md) for the
-superseding canonical-document persistence decision. See
+See [ADR 0015](docs/decisions/0015-provider-neutral-deployment-ownership.md) for the
+current provider-neutral deployment boundary and
+[ADR 0010](docs/decisions/0010-railway-workflow-document-storage.md) for the historical
+canonical-document persistence decision. See
 [ADR 0001](docs/decisions/0001-postgresql-jsonb-persistence.md) for the original JSONB
 decision and
 [ADR 0002](docs/decisions/0002-shared-basic-authentication.md) for the POC tradeoffs.
@@ -272,7 +275,7 @@ execution service's unauthenticated boundary and prohibition on public exposure.
 See [ADR 0009](docs/decisions/0009-local-terminal-screenshot-artifacts.md) for terminal
 screenshot capture, persistent local files, and temporary URL access. See
 [ADR 0014](docs/decisions/0014-trusted-private-network-screenshots.md) for the explicit
-Railway private-listener screenshot opt-in.
+trusted-private-listener screenshot opt-in.
 
 ## POC boundaries
 

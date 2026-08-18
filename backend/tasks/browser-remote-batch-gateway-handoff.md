@@ -17,7 +17,7 @@ Browser client
   | HTTPS + Relay HTTP Basic credentials
   v
 Public Relay API
-  | Railway private network, no service authentication
+  | trusted private network, no service authentication
   v
 Private relay-automation service
 ```
@@ -27,7 +27,7 @@ Private relay-automation service
   and artifact request.
 - Remove `AUTOMATION_SERVICE_TOKEN` from browser configuration and request construction.
   It is obsolete and must not be sent to the Relay API or the private automation service.
-- Never configure the browser with the Railway private automation-service domain.
+- Never configure the browser with the private automation-service origin.
 - Keep `relay-automation` private and unauthenticated. Only the public Relay API performs
   caller authentication.
 

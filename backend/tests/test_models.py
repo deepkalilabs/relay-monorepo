@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
 import pytest
 import yaml
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import ValidationError
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
@@ -22,7 +24,7 @@ from relay_backend.models.workflows import (
 
 def workflow_document() -> dict:
     return {
-        "schemaVersion": "1.2",
+        "schemaVersion": "1.4",
         "id": "b4749f7e-4b22-43bf-8ef4-8ba5f79cb17b",
         "name": "  Checkout flow  ",
         "status": "draft",
@@ -79,6 +81,99 @@ def test_workflow_trims_canonical_names() -> None:
 def test_workflow_rejects_unexpected_properties() -> None:
     document = workflow_document()
     document["secretExtra"] = "must not be accepted"
+
+    with pytest.raises(ValidationError):
+        Workflow.model_validate(document)
+
+
+def test_workflow_keeps_schema_1_2_documents_readable() -> None:
+    document = workflow_document()
+    document["schemaVersion"] = "1.2"
+
+    workflow = Workflow.model_validate(document)
+
+    assert workflow.schema_version == "1.2"
+
+
+def test_workflow_accepts_element_and_repeated_group_assertions() -> None:
+    document = workflow_document()
+    element_assertion = {
+        "id": "assert-ready",
+        "order": 0,
+        "name": "Ready text exists",
+        "enabled": True,
+        "page": {"id": "page-1", "url": "https://shop.example"},
+        "target": {
+            "candidates": [{"kind": "role", "value": "status", "name": "Ready", "exact": True}]
+        },
+        "metadata": {
+            "recordedAt": "2026-07-30T12:00:01Z",
+            "origin": "manual",
+            "sensitive": False,
+        },
+        "type": "assertion",
+        "expectation": {"kind": "text_contains", "expected": "ready"},
+    }
+    group_assertion = {
+        "id": "assert-profiles",
+        "order": 1,
+        "name": "Profiles exist",
+        "enabled": True,
+        "page": {"id": "page-1", "url": "https://shop.example"},
+        "metadata": {
+            "recordedAt": "2026-07-30T12:00:02Z",
+            "origin": "manual",
+            "sensitive": False,
+        },
+        "type": "assertion",
+        "groupTarget": {
+            "version": 1,
+            "algorithm": "structural-token-v1",
+            "root": {
+                "tagName": "article",
+                "role": "article",
+                "sharedClasses": ["profile-card"],
+            },
+            "structureTokens": ["0:article:article", "1:header:"],
+            "capturedMatchCount": 2,
+        },
+        "expectation": {"kind": "group_exists"},
+    }
+    document["steps"] = [element_assertion, group_assertion]
+
+    workflow = Workflow.model_validate(document)
+
+    assert [step.type for step in workflow.steps] == ["assertion", "assertion"]
+    _assert_matches_contract(workflow)
+
+
+def test_workflow_rejects_mixed_assertion_targets_and_waits() -> None:
+    document = workflow_document()
+    document["steps"] = [
+        {
+            "id": "assert-profiles",
+            "order": 0,
+            "name": "Profiles exist",
+            "enabled": True,
+            "page": {"id": "page-1", "url": "https://shop.example"},
+            "target": {"selector": ".profile"},
+            "waitAfter": {"delayMs": 100},
+            "metadata": {
+                "recordedAt": "2026-07-30T12:00:02Z",
+                "origin": "manual",
+                "sensitive": False,
+            },
+            "type": "assertion",
+            "groupTarget": {
+                "version": 1,
+                "algorithm": "structural-token-v1",
+                "root": {"tagName": "article", "sharedClasses": []},
+                "structureTokens": ["0:article:"],
+                "capturedMatchCount": 2,
+            },
+            "expectation": {"kind": "group_exists"},
+        }
+    ]
 
     with pytest.raises(ValidationError):
         Workflow.model_validate(document)
@@ -216,6 +311,51 @@ def test_validated_workflow_matches_authoritative_openapi_schema() -> None:
     assert workflow.created_at == datetime(2026, 7, 30, 12, tzinfo=UTC)
 
 
+def test_shared_conformance_fixtures_match_python_and_published_schemas() -> None:
+    repository_root = Path(__file__).parents[2]
+    fixtures = json.loads(
+        (repository_root / "packages/workflow-contract/fixtures/conformance.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    generated_schema = json.loads(
+        (repository_root / "packages/workflow-contract/schema/workflow-1.4.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    generated_validator = Draft202012Validator(generated_schema, format_checker=FormatChecker())
+    openapi_validators = [
+        _workflow_validator(repository_root / "backend/openapi.yaml"),
+        _workflow_validator(
+            repository_root / "frontend/docs/specs/cloud-workflow-api.openapi.yaml"
+        ),
+    ]
+
+    for fixture in fixtures["cases"]:
+        document = deepcopy(fixtures["baseDocument"])
+        for mutation in fixture["mutations"]:
+            target = document
+            for segment in mutation["path"][:-1]:
+                target = target[segment]
+            target[mutation["path"][-1]] = mutation["value"]
+
+        expected = fixture["expected"]
+        pydantic_valid = True
+        try:
+            Workflow.model_validate(document)
+        except ValidationError:
+            pydantic_valid = False
+
+        assert pydantic_valid is expected["persistence"], fixture["name"]
+        assert (not list(generated_validator.iter_errors(document))) is expected["canonical"], (
+            fixture["name"]
+        )
+        for validator in openapi_validators:
+            assert (not list(validator.iter_errors(document))) is expected["persistence"], fixture[
+                "name"
+            ]
+
+
 def test_namespace_name_is_trimmed_before_length_validation() -> None:
     assert CreateNamespaceRequest(name="  Acme  ").name == "Acme"
 
@@ -235,6 +375,7 @@ def _assert_matches_contract(workflow: Workflow) -> None:
     validator = Draft202012Validator(
         {"$ref": "urn:relay-openapi#/components/schemas/Workflow"},
         registry=registry,
+        format_checker=FormatChecker(),
     )
 
     errors = list(
@@ -242,3 +383,33 @@ def _assert_matches_contract(workflow: Workflow) -> None:
     )
 
     assert errors == []
+
+    shared_schema_path = (
+        Path(__file__).parents[2]
+        / "packages"
+        / "workflow-contract"
+        / "schema"
+        / "workflow-1.4.schema.json"
+    )
+    shared_schema = json.loads(shared_schema_path.read_text(encoding="utf-8"))
+    shared_errors = list(
+        Draft202012Validator(shared_schema, format_checker=FormatChecker()).iter_errors(
+            workflow.model_dump(mode="json", by_alias=True, exclude_none=True)
+        )
+    )
+
+    assert shared_errors == []
+
+
+def _workflow_validator(contract_path: Path) -> Draft202012Validator:
+    contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
+    resource_uri = contract_path.resolve().as_uri()
+    registry = Registry().with_resource(
+        resource_uri,
+        Resource.from_contents(contract, default_specification=DRAFT202012),
+    )
+    return Draft202012Validator(
+        {"$ref": f"{resource_uri}#/components/schemas/Workflow"},
+        registry=registry,
+        format_checker=FormatChecker(),
+    )

@@ -18,6 +18,7 @@ from pydantic import (
 from pydantic.alias_generators import to_camel
 
 NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
+TrimmedNonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 StrictBoolean = Annotated[bool, Field(strict=True)]
 StrictNumber = Annotated[float, Field(strict=True)]
 
@@ -289,6 +290,72 @@ class SubmitStep(ElementStepBase):
     payload: EmptyPayload | None = None
 
 
+class VisibleAssertionExpectation(ApiModel):
+    kind: Literal["visible"]
+
+
+class TextContainsAssertionExpectation(ApiModel):
+    kind: Literal["text_contains"]
+    expected: str = Field(max_length=1_000)
+
+    @field_validator("expected")
+    @classmethod
+    def require_non_blank_expected_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Assertion text cannot be blank.")
+        return value
+
+
+class GroupExistsAssertionExpectation(ApiModel):
+    kind: Literal["group_exists"]
+
+
+AssertionExpectation = Annotated[
+    VisibleAssertionExpectation
+    | TextContainsAssertionExpectation
+    | GroupExistsAssertionExpectation,
+    Field(discriminator="kind"),
+]
+
+
+class RepeatedGroupRoot(ApiModel):
+    tag_name: TrimmedNonEmptyString
+    role: TrimmedNonEmptyString | None = None
+    shared_classes: list[TrimmedNonEmptyString]
+
+
+class RepeatedGroupTemplate(ApiModel):
+    version: Literal[1]
+    algorithm: Literal["structural-token-v1"]
+    frame_url: str | None = None
+    root: RepeatedGroupRoot
+    structure_tokens: list[TrimmedNonEmptyString] = Field(min_length=1)
+    captured_match_count: int = Field(strict=True, ge=2)
+
+
+class AssertionStep(StepBase):
+    type: Literal["assertion"]
+    target: ReplayableElementTarget | None = None
+    group_target: RepeatedGroupTemplate | None = None
+    expectation: AssertionExpectation
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_wait_after(cls, value: Any) -> Any:
+        if isinstance(value, dict) and ("waitAfter" in value or "wait_after" in value):
+            raise ValueError("Assertion steps cannot configure replay waits.")
+        return value
+
+    @model_validator(mode="after")
+    def require_matching_assertion_target(self) -> AssertionStep:
+        if isinstance(self.expectation, GroupExistsAssertionExpectation):
+            if self.group_target is None or self.target is not None:
+                raise ValueError("Group assertions require only a structural template.")
+        elif self.target is None or self.group_target is not None:
+            raise ValueError("Element assertions require only an element target.")
+        return self
+
+
 WorkflowStep = Annotated[
     NavigateStep
     | ClickStep
@@ -298,13 +365,14 @@ WorkflowStep = Annotated[
     | CheckStep
     | UncheckStep
     | KeypressStep
-    | SubmitStep,
+    | SubmitStep
+    | AssertionStep,
     Field(discriminator="type"),
 ]
 
 
 class Workflow(ApiModel):
-    schema_version: Literal["1.2"]
+    schema_version: Literal["1.2", "1.4"]
     id: UUID
     name: NonEmptyString
     status: WorkflowStatus

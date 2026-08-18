@@ -100,9 +100,19 @@ Each feature exposes a small `index.ts` API. Route-private application compositi
 
 ## Workflow model
 
-The dependency-free workflow contract lives in `src/shared/contracts/workflow`. It defines the workflow aggregate, named step variants, element targets, page context, replay waits, serialization, and metadata shared by the recorder, editor, persistence, protocol, and replay engine. Runtime validation is kept beside the contract and compile-time checked against the domain types. Client/server message schemas are split by direction under `src/shared/contracts/protocol`.
+The dependency-free workflow domain and validation contract lives in the root
+`@relay/workflow-contract` package. Compatibility re-exports under
+`src/shared/contracts/workflow` keep frontend imports stable while serialization,
+parameter resolution, and library projections remain frontend-owned. Client/server
+message schemas are split by direction under `src/shared/contracts/protocol`.
 
-Saved workflows and new exports use schema version `1.3`, including `status`, `revision`, optional `finishedAt` lifecycle fields, explicit input bindings on `fill` steps, and a separate assertion step family. Schema `1.2` files and non-fill schema `1.0`/`1.1` files normalize in memory to `1.3`; schema `1.0`/`1.1` workflows containing fills are rejected. A workflow also contains its Browserbase source, timestamps, and an ordered list of steps. Automatic recording produces `fill`, `set_date`, `select`, `click`, and Enter `keypress` steps. Manual action steps and existing workflows continue to support:
+Saved workflows and new exports use schema version `1.4`, including `status`,
+`revision`, optional `finishedAt` lifecycle fields, explicit input bindings on `fill`
+steps, and element and repeated-group assertions. Supported schema `1.0` through `1.3`
+documents normalize in memory to `1.4`; loading alone never rewrites a stored file. A
+workflow also contains its Browserbase source, timestamps, and an ordered list of steps.
+Automatic recording produces `fill`, `set_date`, `select`, `click`, and Enter
+`keypress` steps. Manual action steps and existing workflows continue to support:
 
 ```text
 navigate · click · fill · select · check · uncheck · keypress · submit

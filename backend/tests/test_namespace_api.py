@@ -32,7 +32,7 @@ def namespace_client() -> Iterator[tuple[TestClient, InMemoryWorkflowDocumentSto
         basic_auth_username="relay",
         basic_auth_password="test-password",
         bucket="relay-workflows",
-        endpoint="https://storage.railway.app",
+        endpoint="https://s3.example.test",
         access_key_id="test-access-key",
         secret_access_key="test-secret-key",
         region="auto",

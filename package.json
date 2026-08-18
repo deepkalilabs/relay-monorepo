@@ -5,6 +5,8 @@
     "node": ">=24 <27"
   },
   "workspaces": [
+    "packages/workflow-contract",
+    "packages/replay-core",
     "frontend",
     "backend/packages/automation-core",
     "backend/packages/automation-worker-browserbase",
@@ -27,9 +29,10 @@
     "ws": "8.21.1"
   },
   "scripts": {
-    "build": "npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm run build --workspace browser-memory-recorder",
-    "test:automation": "npm run build --workspace @relay/automation-core && npm test --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm test --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm test --workspace @relay/automation-service-browserbase",
+    "build": "npm run build --workspace @relay/workflow-contract && npm run build --workspace @relay/replay-core && npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm run build --workspace browser-memory-recorder",
+    "test:automation": "npm run test:contract && npm test --workspace @relay/replay-core && npm run build --workspace @relay/replay-core && npm run build --workspace @relay/automation-core && npm test --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm test --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm test --workspace @relay/automation-service-browserbase",
+    "test:contract": "npm run schema:check --workspace @relay/workflow-contract && npm test --workspace @relay/workflow-contract",
     "test:changed": "npm run test:changed --workspace browser-memory-recorder",
-    "typecheck": "npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run build --workspace @relay/workflow-contract && npm run build --workspace @relay/replay-core && npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run typecheck --workspaces --if-present"
   }
 }

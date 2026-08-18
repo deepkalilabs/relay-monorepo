@@ -2,7 +2,7 @@
 
 - Status: Implemented
 - Repository: `relay_backend`
-- Intended delivery: a separate PR after the Railway document-store refactor
+- Intended delivery: a separate PR after the document-store refactor
 - Contract owner: `openapi.yaml`
 
 ## Objective
@@ -105,7 +105,7 @@ namespace/workflow controllers
           +---------+
           |         |
           v         v
- namespace repo   workflow repo ----> private Railway bucket
+ namespace repo   workflow repo ----> private S3-compatible bucket
           |         |
           +----+----+
                v
@@ -198,7 +198,7 @@ uv run python -m openapi_spec_validator packages/automation-service-browserbase/
 ### Never
 
 - Put namespace metadata inside canonical workflow objects.
-- Use the Railway Volume or add file upload/download endpoints.
+- Use a provider-attached volume or add file upload/download endpoints.
 - Create a second namespace OpenAPI contract.
 - Cascade namespace deletion into workflows or bucket objects.
 - Expose object keys, credentials, workflow bodies, or cross-namespace existence.

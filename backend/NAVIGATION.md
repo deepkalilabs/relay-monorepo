@@ -12,7 +12,9 @@ execution gateway for Browser Memory
 Recorder's canonical workflow documents. A caller such as the recorder's local BFF
 sends complete workflow snapshots over HTTP. The backend authenticates the request,
 validates it against the canonical model, stores the canonical document in a private
-Railway Storage Bucket, and publishes its metadata and active object key in PostgreSQL.
+S3-compatible bucket, and publishes its metadata and active object key in PostgreSQL.
+New drafts and explicit saves use schema `1.4`; existing schema `1.2` documents remain
+readable without a bulk migration.
 
 The authenticated FastAPI boundary is the OpenAPI 3.1 contract in [`openapi.yaml`](openapi.yaml).
 It defines three namespace operations and five canonical namespace-scoped workflow
@@ -122,8 +124,8 @@ Browser Memory Recorder / local BFF
           |         Workflow repository
           |          parameterized SQL
           v                 v
- private Railway       PostgreSQL metadata,
- Storage Bucket        summaries, pointers
+ private S3-compatible PostgreSQL metadata,
+ bucket                summaries, pointers
 ```
 
 For UUID-based direct execution, the authenticated FastAPI controller reads the canonical
@@ -162,7 +164,11 @@ POST /v1/run or /v1/batches (unauthenticated local HTTP)
                              | existing Playwright Page + workflow document
                              v
                   @relay/automation-core
-              preflight -> sequential runner
+ privacy-safe facade -> fail-fast sequential runner
+                             |
+                             v
+                    @relay/replay-core
+ @relay/workflow-contract -> provider-neutral replay phases
                              |
                              v
              structured events and terminal result
@@ -177,7 +183,9 @@ capacity that defaults to five. Batch state is not durable and disappears on res
 Neither execution mode shares the Python service's transaction, repository,
 authentication, or persistence infrastructure. The version value is opaque metadata
 and does not affect admission. Assertions resolve one visible target and evaluate once
-in workflow order without retries or post-assertion settling.
+in workflow order without retries or post-assertion settling. Repeated-group assertions
+instead scan bounded visible structural candidates once and apply the shared contract's
+similarity rules.
 
 For direct and batch work, the Browserbase worker can capture the visible viewport after
 automation-core returns and before provider cleanup. The service converts that image to
@@ -190,9 +198,9 @@ batch/run metadata disappear on restart. The Inngest path does not request captu
 [`src/relay_backend/main.py`](src/relay_backend/main.py) builds the FastAPI application:
 
 - The lifespan handler loads environment-backed settings and opens a Psycopg connection
-  pool, an S3-compatible Railway document store, and a non-retrying async automation HTTP
-  client with a 30-second read timeout. Tests constructor-inject services and clients
-  with an in-memory store and avoid creating production dependencies.
+  pool, an S3-compatible document store, and a non-retrying async automation HTTP client
+  with a 30-second read timeout. Tests constructor-inject services and clients with an
+  in-memory store and avoid creating production dependencies.
 - `RequestBodyLimitMiddleware` runs before routing and enforces the 1 MiB body limit
   from the contract, including streamed bodies without a usable `Content-Length`.
 - The workflow router applies shared HTTP Basic authentication to every workflow route.
@@ -338,7 +346,8 @@ relay_backend/
 │       ├── 0011-namespace-scoped-workflows.md
 │       ├── 0012-opaque-execution-schema-version.md
 │       ├── 0013-authenticated-workflow-run-gateway.md
-│       └── 0014-trusted-private-network-screenshots.md
+│       ├── 0014-trusted-private-network-screenshots.md
+│       └── 0015-provider-neutral-deployment-ownership.md
 ├── packages/
 │   ├── automation-core/
 │   │   ├── package.json               Private ESM package metadata and scripts
@@ -372,7 +381,7 @@ relay_backend/
 │       ├── __init__.py                Package marker
 │       ├── main.py                    App factory, lifespan, middleware, error mapping
 │       ├── settings.py                Required environment-backed configuration
-│       ├── document_store.py          Railway S3 object serialization and transport
+│       ├── document_store.py          S3-compatible object serialization and transport
 │       ├── backfill_workflow_documents.py  Resumable legacy JSONB backfill command
 │       ├── auth.py                    Shared Basic authentication dependency
 │       ├── request_limits.py          ASGI request-body size enforcement
@@ -434,7 +443,7 @@ are package markers and contain no runtime behavior.
 | [`tests/test_api.py`](tests/test_api.py) | Proves authentication, routes, errors, limits, and served-contract behavior. |
 | [`tests/conftest.py`](tests/conftest.py) | Applies migrations once and cleans workflow, idempotency, and non-default namespace test data. |
 | [`docs/decisions/`](docs/decisions/) | Preserves the rationale and consequences of accepted architecture/security decisions. |
-| [`packages/automation-core/src/workflow.ts`](packages/automation-core/src/workflow.ts) | Defines the strict TypeScript execution contract, opaque schema-version metadata, assertions, and locator ordering. |
+| [`packages/automation-core/src/workflow.ts`](packages/automation-core/src/workflow.ts) | Preserves automation-core's workflow exports while delegating executable validation, opaque schema-version metadata, assertions, and locator ordering to the root shared contract. |
 | [`packages/automation-core/src/preflight.ts`](packages/automation-core/src/preflight.ts) | Validates runner inputs, start selection, enabled ranges, and bootstrap URL choice. |
 | [`packages/automation-core/src/target-resolution.ts`](packages/automation-core/src/target-resolution.ts) | Owns frame selection, locator construction, uniqueness and visibility checks, and recorded element fingerprint validation. |
 | [`packages/automation-core/src/step-actions.ts`](packages/automation-core/src/step-actions.ts) | Owns canonical Playwright actions, combobox input fidelity, assertions, and recorded page-position restoration. |
@@ -533,11 +542,11 @@ are package markers and contain no runtime behavior.
   and optionally use `TEST_DATABASE_URL` directly from fixture configuration.
 - `AUTOMATION_SERVICE_URL` selects the private run-service base URL and defaults to
   `http://127.0.0.1:8080` for local development.
-- Remote deployments use the Railway private domain, keep screenshots disabled for the
-  first deployment of a supporting build, then set `AUTOMATION_TRUST_PRIVATE_NETWORK=1`
-  with `AUTOMATION_SCREENSHOTS=true`. They keep public networking disabled and run
-  exactly one automation-service replica because all batch and artifact access state is
-  process-local.
+- Remote deployments keep screenshots disabled for the first deployment of a supporting
+  build, then set `AUTOMATION_TRUST_PRIVATE_NETWORK=1` with
+  `AUTOMATION_SCREENSHOTS=true` only behind trusted private networking. They keep the
+  service inaccessible from public networks and run exactly one automation-service
+  replica because all batch and artifact access state is process-local.
 - The Browserbase worker reads `BROWSERBASE_API_KEY` for real runs and optionally
   `BROWSERBASE_PROJECT_ID`, `BROWSERBASE_REGION`, `BROWSERBASE_USE_PROXY`, and
   `BROWSERBASE_VERIFIED`. Validation-only CLI use does not require credentials.
@@ -553,7 +562,8 @@ are package markers and contain no runtime behavior.
 - [`uv.lock`](uv.lock) pins the resolved dependency graph and should change together
   with dependency declarations.
 - [`packages/automation-core/package-lock.json`](packages/automation-core/package-lock.json)
-  independently locks the TypeScript library's development and runtime dependencies.
+  independently locks the TypeScript library and its root-owned shared-contract dependency
+  for isolated automation image builds.
 - [`packages/automation-worker-browserbase/package-lock.json`](packages/automation-worker-browserbase/package-lock.json)
   independently locks the Browserbase worker and its local automation-core dependency.
 - [`packages/automation-service-browserbase/package-lock.json`](packages/automation-service-browserbase/package-lock.json)
@@ -606,28 +616,21 @@ addition or replacement should be recorded as a new ADR under
 
 ## Local verification
 
-Start PostgreSQL and load the environment as described in [`README.md`](README.md), then
-run:
+Run the Node workspace checks from the repository root so shared dependencies build in
+order:
 
 ```bash
-npm ci --prefix packages/automation-core
-npm run typecheck --prefix packages/automation-core
-npm test --prefix packages/automation-core
-npm run build --prefix packages/automation-core
-npm pack --dry-run ./packages/automation-core
+npm ci
+npm run typecheck
+npm run test:automation
+npm run build
+docker build -f backend/Dockerfile.automation -t relay-automation .
+```
 
-npm ci --prefix packages/automation-worker-browserbase
-npm run typecheck --prefix packages/automation-worker-browserbase
-npm test --prefix packages/automation-worker-browserbase
-npm run build --prefix packages/automation-worker-browserbase
-npm pack --dry-run ./packages/automation-worker-browserbase
+Start PostgreSQL and load the environment as described in [`README.md`](README.md), then
+run the Python checks from `backend/`:
 
-npm ci --prefix packages/automation-service-browserbase
-npm run typecheck --prefix packages/automation-service-browserbase
-npm test --prefix packages/automation-service-browserbase
-npm run build --prefix packages/automation-service-browserbase
-npm pack --dry-run ./packages/automation-service-browserbase
-
+```bash
 uv lock --check
 uv run ruff check src tests migrations
 uv run ruff format --check src tests
@@ -651,10 +654,11 @@ agree with the code.
 - [`ADR 0007: Add in-memory background batches`](docs/decisions/0007-in-memory-background-batches.md)
 - [`ADR 0008: Unauthenticated local execution service`](docs/decisions/0008-unauthenticated-local-execution-service.md)
 - [`ADR 0009: Local terminal screenshot artifacts`](docs/decisions/0009-local-terminal-screenshot-artifacts.md)
-- [`ADR 0010: Railway workflow document storage`](docs/decisions/0010-railway-workflow-document-storage.md)
+- [`ADR 0010: Railway workflow document storage (historical)`](docs/decisions/0010-railway-workflow-document-storage.md)
 - [`ADR 0012: Treat execution schema versions as opaque`](docs/decisions/0012-opaque-execution-schema-version.md)
 - [`ADR 0013: Add an authenticated direct and batch workflow gateway`](docs/decisions/0013-authenticated-workflow-run-gateway.md)
 - [`ADR 0014: Permit screenshots on an explicitly trusted private listener`](docs/decisions/0014-trusted-private-network-screenshots.md)
+- [`ADR 0015: Keep deployment ownership provider-neutral`](docs/decisions/0015-provider-neutral-deployment-ownership.md)
 
 When a decision changes, add a new sequential record that supersedes the older one.
 Preserve accepted historical records rather than rewriting or deleting their rationale.

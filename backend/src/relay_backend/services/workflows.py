@@ -105,7 +105,7 @@ class WorkflowService:
 
         now = self.clock()
         workflow = Workflow(
-            schema_version="1.2",
+            schema_version="1.4",
             id=self.uuid_factory(),
             name="Untitled recording",
             status=WorkflowStatus.DRAFT,
@@ -353,7 +353,7 @@ class WorkflowService:
         document = incoming.model_dump(mode="python")
         document.update(
             {
-                "schema_version": "1.2",
+                "schema_version": "1.4",
                 "id": current.id,
                 "status": status or current.status,
                 "revision": current.revision + 1,
