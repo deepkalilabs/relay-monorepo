@@ -18,8 +18,9 @@ owning project directory. Python remains independently managed under `backend/`.
 
 The shared replay input contract lives in
 [`packages/workflow-contract/`](packages/workflow-contract/) and is consumed through the
-root workspace. Automation packages remain physically owned by `backend/` during the
-incremental replay-engine migration.
+root workspace. Automation-core now validates executable documents through that shared
+contract while remaining physically owned by `backend/` during the incremental
+replay-engine migration.
 
 Install and verify all current Node workspaces:
 
@@ -54,11 +55,14 @@ uv run uvicorn relay_backend.main:app --reload --no-access-log
 ```
 
 The backend's Browserbase automation libraries and service remain under
-[`backend/packages/`](backend/packages/). Their source has not been extracted or
-consolidated as part of the shared-contract increment.
+[`backend/packages/`](backend/packages/). Automation-core consumes the shared replay
+input contract, but its execution primitives have not yet moved into the planned shared
+replay engine.
 
 Build and deployment services must use `frontend/` or `backend/` as their working/root
 directory so each project's existing configuration and relative paths remain valid.
+The automation image is the exception: because it consumes a root package, build it
+from the repository root with `backend/Dockerfile.automation`.
 
 ## Repository decisions
 

@@ -22,7 +22,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "@relay/workflow-contract": "file:../../../packages/workflow-contract"
   },
   "peerDependencies": {
     "playwright-core": "^1.61.1"
