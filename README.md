@@ -17,10 +17,10 @@ project lockfiles remain available to deployment contexts that receive only thei
 owning project directory. Python remains independently managed under `backend/`.
 
 The shared replay input contract lives in
-[`packages/workflow-contract/`](packages/workflow-contract/) and is consumed through the
-root workspace. Automation-core now validates executable documents through that shared
-contract while remaining physically owned by `backend/` during the incremental
-replay-engine migration.
+[`packages/workflow-contract/`](packages/workflow-contract/), and provider-neutral
+Playwright phases live in [`packages/replay-core/`](packages/replay-core/). Both are
+consumed through the root workspace. Automation-core delegates execution to replay-core
+while remaining physically owned by `backend/` during the incremental migration.
 
 Install and verify all current Node workspaces:
 
@@ -55,9 +55,9 @@ uv run uvicorn relay_backend.main:app --reload --no-access-log
 ```
 
 The backend's Browserbase automation libraries and service remain under
-[`backend/packages/`](backend/packages/). Automation-core consumes the shared replay
-input contract, but its execution primitives have not yet moved into the planned shared
-replay engine.
+[`backend/packages/`](backend/packages/). Automation-core preserves its fail-fast public
+facade and privacy-safe results while delegating provider-neutral behavior to the shared
+replay engine. Frontend interactive adoption remains the next increment.
 
 Build and deployment services must use `frontend/` or `backend/` as their working/root
 directory so each project's existing configuration and relative paths remain valid.

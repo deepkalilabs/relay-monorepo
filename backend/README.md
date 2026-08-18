@@ -121,11 +121,11 @@ documents, parameters, batch IDs, artifact IDs, or private service URLs.
 | `uv run pytest` | Run unit, contract, API, and PostgreSQL integration tests |
 | `uv run ruff check src tests migrations` | Lint Python code |
 | `uv run ruff format --check src tests` | Verify formatting |
-| `npm ci` (repository root) | Install the shared replay contract and all Node consumers |
-| `npm run test:automation` (repository root) | Check the shared contract and run core, worker, and service tests |
+| `npm ci` (repository root) | Install the shared replay packages and all Node consumers |
+| `npm run test:automation` (repository root) | Check the shared contract and replay core, then run headless consumer tests |
 | `npm run typecheck` (repository root) | Build shared dependencies and typecheck every Node workspace |
 | `npm run build` (repository root) | Build the shared contract, automation packages, and frontend in dependency order |
-| `docker build -f backend/Dockerfile.automation -t relay-automation .` (repository root) | Build the automation service image with its root-owned contract dependency |
+| `docker build -f backend/Dockerfile.automation -t relay-automation .` (repository root) | Build the automation service image with its root-owned replay dependencies |
 | `npm start --prefix packages/automation-service-browserbase` | Start the execution service |
 
 Tests use `TEST_DATABASE_URL` when set and otherwise use the local Compose database.
@@ -215,9 +215,10 @@ Controller → Service ───┤
 library. A background runner supplies an existing Playwright `Page`, receives
 transport-neutral events and structured results, and remains responsible for browser
 lifecycle and any persistence. It consumes the root `@relay/workflow-contract`
-executable schema, which treats the required version string as opaque while enforcing
-the complete workflow shape. The package has no dependency on FastAPI, PostgreSQL,
-Browserbase, or the service's internal persistence model.
+executable schema and delegates provider-neutral Playwright phases to the root
+`@relay/replay-core` package. Its compatibility facade maps structured core failures to
+privacy-safe background diagnostics. The package has no dependency on FastAPI,
+PostgreSQL, Browserbase, or the service's internal persistence model.
 
 [`packages/automation-worker-browserbase`](packages/automation-worker-browserbase/README.md)
 is the provider-specific server consumer. It validates complete workflows while treating

@@ -1,5 +1,5 @@
 {
-  "name": "@relay/automation-core",
+  "name": "@relay/replay-core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,8 +22,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@relay/replay-core": "file:../../../packages/replay-core",
-    "@relay/workflow-contract": "file:../../../packages/workflow-contract"
+    "@relay/workflow-contract": "file:../workflow-contract"
   },
   "peerDependencies": {
     "playwright-core": "^1.61.1"

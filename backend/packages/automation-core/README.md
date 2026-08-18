@@ -1,7 +1,8 @@
 # @relay/automation-core
 
-Private, provider-neutral TypeScript automation library for sequential background
-execution of Relay workflow documents. The caller owns the browser and
+Private TypeScript compatibility facade for sequential background execution of Relay
+workflow documents. Provider-neutral Playwright phases come from `@relay/replay-core`.
+The caller owns the browser and
 passes an existing Playwright `Page`; this package does not create browser sessions,
 persist runs, or expose a service API.
 
@@ -55,11 +56,12 @@ deadlines. It defaults to 15 seconds; remote consumers can select a longer deadl
 ## Development
 
 Requires Node.js 24 or newer. Run these commands from the repository root so the shared
-workflow contract is installed and built before automation-core.
+workflow contract and replay core are installed and built before automation-core.
 
 ```bash
 npm ci
 npm run build --workspace @relay/workflow-contract
+npm run build --workspace @relay/replay-core
 npm run typecheck --workspace @relay/automation-core
 npm test --workspace @relay/automation-core
 npm run build --workspace @relay/automation-core
@@ -70,9 +72,9 @@ The port is behavior-derived from `browser_replay` commit
 `bbf6409ae154dc8980b2b9d36e834c2c3b849182`. That repository remains the interactive
 editor replay product; changes here do not modify it.
 
-Execution is divided internally between target/frame resolution, canonical step
-actions, and orchestration/settling. `src/execution.ts` remains the compatibility facade
-for the existing internal test and runner imports.
+`@relay/replay-core` owns target/frame resolution, canonical step actions, settling, and
+waits. `src/execution.ts` remains the privacy-safe compatibility adapter used by the
+existing runner and tests.
 
 ## Deliberate boundaries
 
