@@ -1,2 +1,0 @@
-#!/bin/sh
-exec node "$(git rev-parse --show-toplevel)/frontend/scripts/adr-gate.mjs" pre-push "$@"

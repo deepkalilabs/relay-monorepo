@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/frontend/scripts/adr-gate.mjs\" codex-pre-tool",
+            "command": "node \"$(git rev-parse --show-toplevel)/tooling/repository/adr-gate.mjs\" codex-pre-tool",
             "timeout": 30,
             "statusMessage": "Checking ADR push safety"
           }

@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 const CODE_INTEL_HOST = "127.0.0.1";
 const CODE_INTEL_PORT = 8765;
 const GENERATED_BRANCH_PREFIX = "codex/";
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 function command(commandName, args, options = {}) {
   const result = spawnSync(commandName, args, {
@@ -357,15 +357,26 @@ function waitForPort(host, port, timeoutMs, child) {
 }
 
 async function startCodeIntel(root, stateDirectory) {
-  const python = resolve(root, ".venv/bin/python");
-  if (!existsSync(python)) {
-    throw new Error("Missing .venv. Run `uv sync` before starting the loop.");
+  const codeIntelRoot = resolve(root, "tooling/agent-code-intel");
+  const codeIntelScript = resolve(codeIntelRoot, "ralph_code_intel.py");
+  if (!existsSync(codeIntelScript)) {
+    throw new Error(`Missing code-intelligence service: ${codeIntelScript}`);
+  }
+  const uv = command("uv", ["--version"], { allowFailure: true });
+  if (uv.status !== 0) {
+    throw new Error("Missing uv. Install uv before starting the Ralph loop.");
   }
 
   mkdirSync(stateDirectory, { recursive: true });
   const logPath = resolve(stateDirectory, "code-intel.log");
   const logHandle = openSync(logPath, "a", 0o600);
-  const child = spawn(python, [resolve(root, "tools/ralph_code_intel.py")], {
+  const child = spawn("uv", [
+    "run",
+    "--directory",
+    codeIntelRoot,
+    "python",
+    codeIntelScript,
+  ], {
     cwd: root,
     detached: false,
     env: {

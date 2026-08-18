@@ -5,13 +5,21 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const projectRoot = resolve(import.meta.dirname, "..");
+const projectRoot = resolve(import.meta.dirname, "../..");
+const codeIntelRoot = resolve(projectRoot, "tooling/agent-code-intel");
 
 describe("Ralph code-intelligence service", () => {
   it("loads ast-grep and SolidLSP and answers a structural smoke request", () => {
     const result = spawnSync(
-      resolve(projectRoot, ".venv/bin/python"),
-      [resolve(projectRoot, "tools/ralph_code_intel.py"), "--smoke"],
+      "uv",
+      [
+        "run",
+        "--directory",
+        codeIntelRoot,
+        "python",
+        resolve(codeIntelRoot, "ralph_code_intel.py"),
+        "--smoke",
+      ],
       { cwd: projectRoot, encoding: "utf8" },
     );
 

@@ -15,8 +15,13 @@ import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 
-const projectRoot = resolve(import.meta.dirname, "..");
-const gateScript = join(projectRoot, "scripts", "adr-gate.mjs");
+const projectRoot = resolve(import.meta.dirname, "../..");
+const gateScript = join(
+  projectRoot,
+  "tooling",
+  "repository",
+  "adr-gate.mjs",
+);
 const prePushHook = join(projectRoot, ".githooks", "pre-push");
 const zeroOid = "0".repeat(40);
 const temporaryRoots: string[] = [];
@@ -126,11 +131,11 @@ afterEach(() => {
 });
 
 describe("ADR pre-push gate", () => {
-  it("uses the nested frontend ADR and hook paths in the monorepo", () => {
+  it("uses the legacy frontend ADR path and root hook path", () => {
     const { repo } = createRepository();
     mkdirSync(join(repo, "frontend", "docs", "decisions"), { recursive: true });
-    mkdirSync(join(repo, "frontend", ".githooks"), { recursive: true });
-    cpSync(prePushHook, join(repo, "frontend", ".githooks", "pre-push"));
+    mkdirSync(join(repo, ".githooks"), { recursive: true });
+    cpSync(prePushHook, join(repo, ".githooks", "pre-push"));
     commitFile(
       repo,
       "frontend/docs/decisions/0001-monorepo.md",
@@ -164,9 +169,7 @@ describe("ADR pre-push gate", () => {
       ]),
     );
     expectSuccess(runGate(repo, ["install"]));
-    expect(git(repo, "config", "--get", "core.hooksPath")).toBe(
-      "frontend/.githooks",
-    );
+    expect(git(repo, "config", "--get", "core.hooksPath")).toBe(".githooks");
   });
 
   it("accepts an exact routine branch review", () => {
@@ -354,16 +357,14 @@ describe("ADR pre-push gate", () => {
   it("installs only an executable pre-push hook and leaves commits ungated", () => {
     expect(existsSync(prePushHook)).toBe(true);
     const { repo } = createRepository();
-    mkdirSync(join(repo, "frontend", ".githooks"), { recursive: true });
-    mkdirSync(join(repo, "frontend", "scripts"), { recursive: true });
-    cpSync(prePushHook, join(repo, "frontend", ".githooks", "pre-push"));
-    cpSync(gateScript, join(repo, "frontend", "scripts", "adr-gate.mjs"));
+    mkdirSync(join(repo, ".githooks"), { recursive: true });
+    mkdirSync(join(repo, "tooling", "repository"), { recursive: true });
+    cpSync(prePushHook, join(repo, ".githooks", "pre-push"));
+    cpSync(gateScript, join(repo, "tooling", "repository", "adr-gate.mjs"));
 
     expectSuccess(runGate(repo, ["install"]));
-    expect(git(repo, "config", "--get", "core.hooksPath")).toBe(
-      "frontend/.githooks",
-    );
-    const installedHook = join(repo, "frontend", ".githooks", "pre-push");
+    expect(git(repo, "config", "--get", "core.hooksPath")).toBe(".githooks");
+    const installedHook = join(repo, ".githooks", "pre-push");
     expect(readFileSync(installedHook).length).toBeGreaterThan(0);
     expect(statSync(installedHook).mode & 0o111).not.toBe(0);
     expect(() =>

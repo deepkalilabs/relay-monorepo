@@ -566,8 +566,7 @@ function codexPreTool() {
 
 function install() {
   const root = repoRoot();
-  const nestedHooks = "frontend/.githooks";
-  const hooksPath = existsSync(join(root, nestedHooks)) ? nestedHooks : ".githooks";
+  const hooksPath = ".githooks";
   chmodSync(join(root, hooksPath, "pre-push"), 0o755);
   git(["config", "--local", "core.hooksPath", hooksPath], { cwd: root });
   console.log(

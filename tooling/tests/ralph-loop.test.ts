@@ -10,7 +10,7 @@ import {
   ralphexRunArgs,
   resolveProjectPlan,
   renderIncrementPlan,
-} from "../scripts/ralph-loop.mjs";
+} from "../ralph/ralph-loop.mjs";
 
 const masterPlan = `# Add export
 
@@ -29,16 +29,16 @@ Keep the first version intentionally small.
 `;
 
 describe("Ralph loop controls", () => {
-  it("keeps project-relative plans under the nested frontend Git path", () => {
+  it("keeps plans under the repository docs path", () => {
     expect(
       resolveProjectPlan(
         "/workspace/relay",
-        "/workspace/relay/frontend",
+        "/workspace/relay",
         "docs/plans/add-export.md",
       ),
     ).toEqual({
-      absolute: "/workspace/relay/frontend/docs/plans/add-export.md",
-      local: "frontend/docs/plans/add-export.md",
+      absolute: "/workspace/relay/docs/plans/add-export.md",
+      local: "docs/plans/add-export.md",
       projectLocal: "docs/plans/add-export.md",
     });
   });
