@@ -16,7 +16,7 @@ structure guide.
 Resolve discrepancies in this order:
 
 1. [`openapi.yaml`](openapi.yaml) for the persistence contract, and
-   [`packages/automation-service-browserbase/openapi.yaml`](packages/automation-service-browserbase/openapi.yaml)
+   [`../apps/automation-service-browserbase/openapi.yaml`](../apps/automation-service-browserbase/openapi.yaml)
    for the independent run-service contract.
 2. Runtime code under [`src/relay_backend/`](src/relay_backend/).
 3. Executable behavior under [`tests/`](tests/).
@@ -65,10 +65,10 @@ uv run ruff check src tests migrations
 uv run ruff format --check src tests
 uv run pytest
 uv run python -m openapi_spec_validator openapi.yaml
-npm run typecheck --prefix packages/automation-service-browserbase
-npm test --prefix packages/automation-service-browserbase
-npm run build --prefix packages/automation-service-browserbase
-uv run python -m openapi_spec_validator packages/automation-service-browserbase/openapi.yaml
+npm run typecheck --prefix ../apps/automation-service-browserbase
+npm test --prefix ../apps/automation-service-browserbase
+npm run build --prefix ../apps/automation-service-browserbase
+uv run python -m openapi_spec_validator ../apps/automation-service-browserbase/openapi.yaml
 ```
 
 Tests require PostgreSQL. They use `TEST_DATABASE_URL` when present and otherwise use

@@ -10,7 +10,7 @@
     "frontend",
     "packages/automation-core",
     "packages/automation-worker-browserbase",
-    "backend/packages/automation-service-browserbase"
+    "apps/automation-service-browserbase"
   ],
   "overrides": {
     "@axe-core/playwright": "4.12.1",

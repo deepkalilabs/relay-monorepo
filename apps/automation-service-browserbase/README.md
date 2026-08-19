@@ -14,14 +14,14 @@ npm ci --prefix packages/automation-core
 npm run build --prefix packages/automation-core
 npm ci --prefix packages/automation-worker-browserbase
 npm run build --prefix packages/automation-worker-browserbase
-npm ci --prefix backend/packages/automation-service-browserbase
-npm run build --prefix backend/packages/automation-service-browserbase
+npm ci --prefix apps/automation-service-browserbase
+npm run build --prefix apps/automation-service-browserbase
 ```
 
 Set `BROWSERBASE_API_KEY`, then start the service:
 
 ```bash
-npm start --prefix backend/packages/automation-service-browserbase
+npm start --prefix apps/automation-service-browserbase
 ```
 
 The service reads only process environment variables. It does not load another
@@ -31,7 +31,7 @@ From the repository root, a one-line local development start using the ignored `
 file is:
 
 ```bash
-set -a; source .env; set +a; npm run dev --prefix backend/packages/automation-service-browserbase
+set -a; source .env; set +a; npm run dev --prefix apps/automation-service-browserbase
 ```
 
 ## API
@@ -159,7 +159,7 @@ Start the service in development mode:
 export BROWSERBASE_API_KEY="your-browserbase-api-key"
 export AUTOMATION_HOST="127.0.0.1"
 export INNGEST_DEV=1
-npm run dev --prefix packages/automation-service-browserbase
+npm run dev --prefix apps/automation-service-browserbase
 ```
 
 In a second terminal, start the local Dev Server:
@@ -208,17 +208,17 @@ logs.
 ## Verification
 
 ```bash
-npm run typecheck --prefix packages/automation-service-browserbase
-npm test --prefix packages/automation-service-browserbase
-npm run build --prefix packages/automation-service-browserbase
-npm pack --dry-run ./packages/automation-service-browserbase
+npm run typecheck --prefix apps/automation-service-browserbase
+npm test --prefix apps/automation-service-browserbase
+npm run build --prefix apps/automation-service-browserbase
+npm pack --dry-run ./apps/automation-service-browserbase
 ```
 
 Normal tests use fake Browserbase and Playwright dependencies. A paid navigation-only
 HTTP smoke test is explicitly opt-in:
 
 ```bash
-BROWSERBASE_E2E=1 npm run test:browserbase --prefix packages/automation-service-browserbase
+BROWSERBASE_E2E=1 npm run test:browserbase --prefix apps/automation-service-browserbase
 ```
 
 ## Deliberate boundaries

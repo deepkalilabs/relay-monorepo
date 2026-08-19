@@ -2,16 +2,16 @@ FROM python:3.12-slim AS base
 
 RUN pip install --no-cache-dir uv
 
-WORKDIR /app
+WORKDIR /repo/backend
 
-COPY pyproject.toml uv.lock README.md openapi.yaml ./
-COPY packages/automation-service-browserbase/openapi.yaml packages/automation-service-browserbase/openapi.yaml
-COPY src/ src/
+COPY backend/pyproject.toml backend/uv.lock backend/README.md backend/openapi.yaml backend/hatch_build.py ./
+COPY apps/automation-service-browserbase/openapi.yaml ../apps/automation-service-browserbase/openapi.yaml
+COPY backend/src/ src/
 RUN uv sync --frozen --no-dev
 
-COPY alembic.ini ./
-COPY migrations/ migrations/
-COPY scripts/start-api.sh scripts/start-api.sh
+COPY backend/alembic.ini ./
+COPY backend/migrations/ migrations/
+COPY backend/scripts/start-api.sh scripts/start-api.sh
 RUN chmod +x scripts/start-api.sh
 
 ENV PATH="/app/.venv/bin:$PATH"

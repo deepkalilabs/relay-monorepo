@@ -29,7 +29,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@relay/automation-worker-browserbase": "file:../../../packages/automation-worker-browserbase",
+    "@relay/automation-worker-browserbase": "file:../../packages/automation-worker-browserbase",
     "fastify": "^5.11.0",
     "inngest": "^4.15.0",
     "sharp": "^0.35.3"

@@ -76,16 +76,17 @@ uv run alembic upgrade head
 uv run uvicorn relay_backend.main:app --reload --no-access-log
 ```
 
-The backend's Browserbase automation libraries and service remain under
-[`backend/packages/`](backend/packages/). Automation-core preserves its fail-fast public
-facade and privacy-safe results while delegating provider-neutral behavior to the shared
-replay engine. The frontend keeps its interactive state machine and delegates the same
-provider-neutral phases to replay-core.
+The Browserbase automation libraries live under [`packages/`](packages/), and the
+deployable execution service lives under
+[`apps/automation-service-browserbase/`](apps/automation-service-browserbase/).
+Automation-core preserves its fail-fast public facade and privacy-safe results while
+delegating provider-neutral behavior to the shared replay engine. The frontend keeps
+its interactive state machine and delegates the same provider-neutral phases to
+replay-core.
 
-Build and deployment services must use `frontend/` or `backend/` as their working/root
-directory so each project's existing configuration and relative paths remain valid.
-The automation image is the exception: because it consumes a root package, build it
-from the repository root with `backend/Dockerfile.automation`.
+Local frontend and backend commands continue to use `frontend/` or `backend/` as their
+working directory. Both Docker images now use the repository root as their build context
+so they can consume sibling packages and contracts.
 
 ## Repository decisions
 

@@ -11,10 +11,7 @@ CONTRACT_PATH = (
     REPOSITORY_CONTRACT_PATH if REPOSITORY_CONTRACT_PATH.exists() else PACKAGED_CONTRACT_PATH
 )
 REPOSITORY_AUTOMATION_CONTRACT_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "packages"
-    / "automation-service-browserbase"
-    / "openapi.yaml"
+    Path(__file__).resolve().parents[3] / "apps" / "automation-service-browserbase" / "openapi.yaml"
 )
 PACKAGED_AUTOMATION_CONTRACT_PATH = Path(__file__).with_name("automation_service_openapi.yaml")
 AUTOMATION_CONTRACT_PATH = (

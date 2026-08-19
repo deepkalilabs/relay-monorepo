@@ -160,7 +160,7 @@ grace period.
 export BROWSERBASE_API_KEY="your-browserbase-api-key"
 export AUTOMATION_HOST="127.0.0.1"
 export INNGEST_DEV=1
-npm run dev --prefix packages/automation-service-browserbase
+npm run dev --prefix apps/automation-service-browserbase
 ```
 
 ### Start Inngest locally
@@ -205,9 +205,9 @@ Automated checks must prove:
 Run the existing TypeScript checks after the focused tests:
 
 ```bash
-npm run typecheck --prefix packages/automation-service-browserbase
-npm test --prefix packages/automation-service-browserbase
-npm run build --prefix packages/automation-service-browserbase
+npm run typecheck --prefix apps/automation-service-browserbase
+npm test --prefix apps/automation-service-browserbase
+npm run build --prefix apps/automation-service-browserbase
 ```
 
 Perform one paid Browserbase smoke run manually only after fake-worker tests pass.

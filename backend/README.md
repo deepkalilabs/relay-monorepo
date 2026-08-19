@@ -125,8 +125,8 @@ documents, parameters, batch IDs, artifact IDs, or private service URLs.
 | `npm run test:automation` (repository root) | Check the shared contract and replay core, then run headless consumer tests |
 | `npm run typecheck` (repository root) | Build shared dependencies and typecheck every Node workspace |
 | `npm run build` (repository root) | Build the shared contract, automation packages, and frontend in dependency order |
-| `docker build -f backend/Dockerfile.automation -t relay-automation .` (repository root) | Build the automation service image with its root-owned replay dependencies |
-| `npm start --prefix packages/automation-service-browserbase` | Start the execution service |
+| `docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .` (repository root) | Build the automation service image with its root-owned replay dependencies |
+| `npm start --prefix apps/automation-service-browserbase` (repository root) | Start the execution service |
 
 Tests use `TEST_DATABASE_URL` when set and otherwise use the local Compose database.
 They truncate workflow and idempotency data and remove non-default test namespaces
@@ -229,7 +229,7 @@ persist run state. Visibility and text-containment assertions execute once witho
 Repeated-group assertions likewise execute once by comparing bounded, visible structural
 candidates through the shared contract's matching rules.
 
-[`packages/automation-service-browserbase`](packages/automation-service-browserbase/README.md)
+[`apps/automation-service-browserbase`](../apps/automation-service-browserbase/README.md)
 is a separate Fastify process exposing unauthenticated local direct and batch execution APIs.
 `POST /v1/run` streams privacy-safe NDJSON and cancels on disconnect. `POST /v1/batches`
 queues one to ten workflows in process memory, while `GET /v1/batches/{batchId}` polls

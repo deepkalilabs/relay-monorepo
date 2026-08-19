@@ -34,7 +34,8 @@ packages = ["src/relay_backend"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "openapi.yaml" = "relay_backend/openapi.yaml"
-"packages/automation-service-browserbase/openapi.yaml" = "relay_backend/automation_service_openapi.yaml"
+
+[tool.hatch.build.hooks.custom]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

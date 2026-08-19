@@ -40,7 +40,7 @@ process-local result. `GET /v1/artifacts/{artifactId}` preserves temporary relat
 thumbnail capabilities behind shared Basic auth.
 
 The independent execution boundary is
-[`packages/automation-service-browserbase/openapi.yaml`](packages/automation-service-browserbase/openapi.yaml).
+[`apps/automation-service-browserbase/openapi.yaml`](../apps/automation-service-browserbase/openapi.yaml).
 It defines unauthenticated local direct-run and in-memory batch operations plus
 liveness and readiness checks.
 
@@ -53,7 +53,7 @@ persistence or browser lifecycle. The separate
 [`@relay/automation-worker-browserbase`](../packages/automation-worker-browserbase/README.md)
 package is its Browserbase-specific server consumer.
 The separate
-[`@relay/automation-service-browserbase`](packages/automation-service-browserbase/README.md)
+[`@relay/automation-service-browserbase`](../apps/automation-service-browserbase/README.md)
 package exposes that worker to local callers without adding execution logic
 to FastAPI or PostgreSQL.
 
@@ -62,7 +62,7 @@ to FastAPI or PostgreSQL.
 Use this precedence when documentation and implementation appear to disagree:
 
 1. [`openapi.yaml`](openapi.yaml) is authoritative for the persistence wire contract,
-   while [`packages/automation-service-browserbase/openapi.yaml`](packages/automation-service-browserbase/openapi.yaml)
+   while [`apps/automation-service-browserbase/openapi.yaml`](../apps/automation-service-browserbase/openapi.yaml)
    is authoritative for the execution wire contract.
 2. Runtime code under [`src/relay_backend/`](src/relay_backend/) is authoritative for
    current implementation behavior.
@@ -92,7 +92,7 @@ For a first pass through the code, read:
    independent background-automation boundary and public TypeScript API.
 11. [`packages/automation-worker-browserbase/README.md`](../packages/automation-worker-browserbase/README.md)
     for Browserbase run configuration, CLI usage, and provider lifecycle.
-12. [`packages/automation-service-browserbase/README.md`](packages/automation-service-browserbase/README.md)
+12. [`apps/automation-service-browserbase/README.md`](../apps/automation-service-browserbase/README.md)
     for the streaming and in-memory batch HTTP contract, configuration, and operations.
 
 ## Architecture overview
@@ -313,12 +313,15 @@ canonical request hash, response status, response body, and creation time. Succe
 records are retained indefinitely in this POC. A claimed record is completed only after
 the workflow operation succeeds, in the same transaction.
 
-## Repository file structure
+## API file structure
 
 Generated artifacts, caches, virtual environments, and `dist/` packages are omitted.
+The execution service is a sibling app under
+[`apps/automation-service-browserbase/`](../apps/automation-service-browserbase/), and
+the automation libraries are sibling root packages under [`packages/`](../packages/).
 
 ```text
-relay_backend/
+backend/
 ├── AGENTS.md                         Agent entry point and non-negotiable guardrails
 ├── NAVIGATION.md                     Detailed architecture and ownership guide
 ├── README.md                         Setup, commands, configuration, and POC scope
@@ -348,26 +351,6 @@ relay_backend/
 │       ├── 0013-authenticated-workflow-run-gateway.md
 │       ├── 0014-trusted-private-network-screenshots.md
 │       └── 0015-provider-neutral-deployment-ownership.md
-├── packages/
-│   ├── automation-core/
-│   │   ├── package.json               Private ESM package metadata and scripts
-│   │   ├── package-lock.json          Package-local locked dependency graph
-│   │   ├── README.md                  Public API, usage, and deliberate boundaries
-│   │   ├── src/                       Contract, preflight, execution, and runner
-│   │   └── tests/                     Contract, behavior, cancellation, privacy tests
-│   ├── automation-worker-browserbase/
-│       ├── package.json               Private worker library and CLI metadata
-│       ├── package-lock.json          Worker dependency lockfile
-│       ├── README.md                  CLI, configuration, privacy, and run boundaries
-│       ├── src/                       Preparation, Browserbase lifecycle, and JSONL CLI
-│       └── tests/                     Parameters, lifecycle, CLI, privacy, and opt-in smoke tests
-│   └── automation-service-browserbase/
-│       ├── package.json               Private Fastify service metadata and scripts
-│       ├── package-lock.json          Service dependency lockfile
-│       ├── openapi.yaml               Authoritative execution-service contract
-│       ├── README.md                  HTTP, configuration, privacy, and operations
-│       ├── src/                       Configuration, HTTP lifecycle, local Inngest POC, and entry point
-│       └── tests/                     Contract, streaming, Inngest, lifecycle, integration, and smoke tests
 ├── migrations/
 │   ├── env.py                        Alembic online/offline runtime configuration
 │   ├── script.py.mako                Migration revision template
@@ -453,10 +436,10 @@ are package markers and contain no runtime behavior.
 | [`packages/automation-core/tests/`](../packages/automation-core/tests/) | Proves contract agreement, behavior parity, fail-fast execution, cancellation, and diagnostic privacy. |
 | [`packages/automation-worker-browserbase/src/`](../packages/automation-worker-browserbase/src/) | Validates complete run inputs, resolves parameters, owns Browserbase lifecycle, and exposes the JSONL CLI. |
 | [`packages/automation-worker-browserbase/tests/`](../packages/automation-worker-browserbase/tests/) | Proves worker lifecycle, cleanup, timeout, parameter, CLI, and privacy behavior without paid sessions by default. |
-| [`packages/automation-service-browserbase/openapi.yaml`](packages/automation-service-browserbase/openapi.yaml) | Defines the independent direct-run, in-memory batch, polling, and health wire contract. |
-| [`packages/automation-service-browserbase/src/`](packages/automation-service-browserbase/src/) | Owns media validation, request limits, NDJSON and batch transport, shared local capacity, disconnect cancellation, and shutdown. |
-| [`packages/automation-service-browserbase/src/inngest.ts`](packages/automation-service-browserbase/src/inngest.ts) | Owns the opt-in local Inngest event validation, one-function registration, and safe terminal projection. |
-| [`packages/automation-service-browserbase/tests/`](packages/automation-service-browserbase/tests/) | Proves the service contract and worker integration without paid sessions by default. |
+| [`apps/automation-service-browserbase/openapi.yaml`](../apps/automation-service-browserbase/openapi.yaml) | Defines the independent direct-run, in-memory batch, polling, and health wire contract. |
+| [`apps/automation-service-browserbase/src/`](../apps/automation-service-browserbase/src/) | Owns media validation, request limits, NDJSON and batch transport, shared local capacity, disconnect cancellation, and shutdown. |
+| [`apps/automation-service-browserbase/src/inngest.ts`](../apps/automation-service-browserbase/src/inngest.ts) | Owns the opt-in local Inngest event validation, one-function registration, and safe terminal projection. |
+| [`apps/automation-service-browserbase/tests/`](../apps/automation-service-browserbase/tests/) | Proves the service contract and worker integration without paid sessions by default. |
 | [`docs/designs/inngest-browserbase-orchestration.md`](docs/designs/inngest-browserbase-orchestration.md) | Defines the local-only Inngest POC boundary and deferred production decisions. |
 
 ## Where to make common changes
@@ -478,8 +461,8 @@ are package markers and contain no runtime behavior.
 | Change packaging or dependencies | [`pyproject.toml`](pyproject.toml) | `uv.lock`, contract packaging, and README requirements. |
 | Change background automation behavior | [`packages/automation-core/src/runner.ts`](../packages/automation-core/src/runner.ts), [`step-actions.ts`](../packages/automation-core/src/step-actions.ts), [`target-resolution.ts`](../packages/automation-core/src/target-resolution.ts), and [`execution.ts`](../packages/automation-core/src/execution.ts) | Package tests, public exports, package README, and ADR 0003 boundaries. |
 | Change Browserbase run lifecycle | [`packages/automation-worker-browserbase/src/worker.ts`](../packages/automation-worker-browserbase/src/worker.ts) | Worker tests, CLI output, package README, and ADR 0004 boundaries. |
-| Change the Browserbase execution API | [`packages/automation-service-browserbase/openapi.yaml`](packages/automation-service-browserbase/openapi.yaml) | Service runtime, tests, README, and ADR 0005/0007/0008 boundaries. |
-| Change the local Inngest POC | [`packages/automation-service-browserbase/src/inngest.ts`](packages/automation-service-browserbase/src/inngest.ts) | Shared lifecycle tests, package README, POC design, and privacy assertions. |
+| Change the Browserbase execution API | [`apps/automation-service-browserbase/openapi.yaml`](../apps/automation-service-browserbase/openapi.yaml) | Service runtime, tests, README, and ADR 0005/0007/0008 boundaries. |
+| Change the local Inngest POC | [`apps/automation-service-browserbase/src/inngest.ts`](../apps/automation-service-browserbase/src/inngest.ts) | Shared lifecycle tests, package README, POC design, and privacy assertions. |
 
 ## Invariants to preserve
 
@@ -566,7 +549,7 @@ are package markers and contain no runtime behavior.
   for isolated automation image builds.
 - [`packages/automation-worker-browserbase/package-lock.json`](../packages/automation-worker-browserbase/package-lock.json)
   independently locks the Browserbase worker and its local automation-core dependency.
-- [`packages/automation-service-browserbase/package-lock.json`](packages/automation-service-browserbase/package-lock.json)
+- [`apps/automation-service-browserbase/package-lock.json`](../apps/automation-service-browserbase/package-lock.json)
   independently locks Fastify and its local Browserbase worker dependency.
 
 ## Testing architecture
@@ -624,7 +607,7 @@ npm ci
 npm run typecheck
 npm run test:automation
 npm run build
-docker build -f backend/Dockerfile.automation -t relay-automation .
+docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .
 ```
 
 Start PostgreSQL and load the environment as described in [`README.md`](README.md), then
@@ -636,7 +619,7 @@ uv run ruff check src tests migrations
 uv run ruff format --check src tests
 uv run pytest
 uv run python -m openapi_spec_validator openapi.yaml
-uv run python -m openapi_spec_validator packages/automation-service-browserbase/openapi.yaml
+uv run python -m openapi_spec_validator ../apps/automation-service-browserbase/openapi.yaml
 ```
 
 Before submitting an architecture-affecting change, also verify that this guide,
