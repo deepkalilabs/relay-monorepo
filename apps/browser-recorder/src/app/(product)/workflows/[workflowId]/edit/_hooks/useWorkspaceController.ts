@@ -6,7 +6,6 @@ import type { BrowserActions, BrowserPanelAlert, BrowserViewModel } from "@/feat
 import { profileClient } from "@/features/profile";
 import { useRecorderSession } from "@/features/recorder";
 import {
-  downloadWorkflow,
   initialWorkflowState,
   WorkflowRequestError,
   workflowEditorClient,
@@ -19,7 +18,6 @@ import { resolveWorkflowParameters } from "@/shared/contracts/workflow/parameter
 import { WorkflowSchema } from "@/shared/contracts/workflow/schema";
 import { useWorkspacePanels } from "./useWorkspacePanels";
 
-type Confirmation = "sensitiveExport" | null;
 type PersistenceStatus = "loading" | "ready" | "saving" | "error" | "conflict";
 
 export function useWorkspaceController(workflowId: string, profileId = "", autoRun = false) {
@@ -27,7 +25,6 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
   const [workflowState, dispatch] = useReducer(workflowReducer, undefined, initialWorkflowState);
   const workflowStateRef = useRef(workflowState);
   const [runDialogOpen, setRunDialogOpen] = useState(false);
-  const [confirmation, setConfirmation] = useState<Confirmation>(null);
   const [announcement, setAnnouncement] = useState("");
   const [pendingReplayStartId, setPendingReplayStartId] = useState<string | undefined>();
   const [runtimeValues, setRuntimeValues] = useState<Record<string, string>>({});
@@ -90,7 +87,7 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
   const workflowLocked = replayLocked || captchaLocked || persistenceLocked || assertionPicking;
   const panels = useWorkspacePanels({
     selectedStepId: workflowState.selectedStepId,
-    overlayOpen: Boolean(confirmation || runDialogOpen || assertionSelection),
+    overlayOpen: Boolean(runDialogOpen || assertionSelection),
   });
 
   const loadSavedWorkflow = useCallback(async () => {
@@ -141,7 +138,6 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
     if (!captchaLocked) return;
     const timeout = window.setTimeout(() => {
       setRunDialogOpen(false);
-      setConfirmation(null);
       setPendingReplayStartId(undefined);
       setRuntimeValues({});
       runProfileRequestId.current += 1;
@@ -239,25 +235,6 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
     setRunProfileStatus("idle");
     setRunProfileError(null);
     session.startReplay(parameterResult.resolvedWorkflow, startStepId);
-  };
-
-  const exportNow = () => {
-    const parsed = WorkflowSchema.safeParse(workflowState.workflow);
-    if (!parsed.success) {
-      session.reportError(`Workflow export is blocked: ${parsed.error.issues[0]?.message}`);
-      return;
-    }
-    downloadWorkflow(parsed.data);
-    setConfirmation(null);
-    setAnnouncement("Workflow JSON downloaded.");
-  };
-
-  const requestExport = () => {
-    if (workflowState.workflow.steps.some((step) => step.metadata.sensitive)) {
-      setConfirmation("sensitiveExport");
-    } else {
-      exportNow();
-    }
   };
 
   const saveWorkflow = async () => {
@@ -489,7 +466,6 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
         }),
         rename: (name: string) => dispatch({ type: "renameWorkflow", name }),
         reorderSteps: (activeId: string, overId: string) => dispatch({ type: "reorder", activeId, overId }),
-        requestExport,
         reload: loadSavedWorkflow,
         save: saveWorkflow,
         finish: finishWorkflow,
@@ -535,9 +511,7 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
       actions: {
         addAssertion: beginAssertionPick,
         closeAssertion: closeAssertionPick,
-        closeConfirmation: () => setConfirmation(null),
         closeRun: closeRunDialog,
-        confirmSensitiveExport: exportNow,
         retryRunProfile: () => void loadRunProfile(),
         updateRuntimeValue: (stepId: string, value: string) => {
           setRuntimeValues((current) => ({ ...current, [stepId]: value }));
@@ -549,7 +523,6 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
         assertionSelection,
         blockedReason: replayBlockedReason,
         canRun: replayParameterResult.ready && !replayBlockedReason,
-        confirmation,
         libraryHref: pendingNeedsProfile && !profileId
           ? `/library?selected=${encodeURIComponent(workflowId)}`
           : undefined,

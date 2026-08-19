@@ -52,17 +52,13 @@ plan, apply, and smoke-test workflow.
 ## Repository agent workflow
 
 Read the root [`AGENTS.md`](AGENTS.md) and then the nearest project guide before making
-changes. Repository-wide Codex, hook, Ralph, ADR-gate, and code-intelligence support is
-owned by [`.codex/`](.codex/), [`.githooks/`](.githooks/), [`.ralphex/`](.ralphex/), and
-[`tooling/`](tooling/).
+changes. Repository-wide Codex hooks and ADR-gate support are owned by
+[`.codex/`](.codex/), [`.githooks/`](.githooks/), and [`tooling/`](tooling/).
 
 From the repository root:
 
 ```bash
-uv sync --directory tooling/agent-code-intel
 npm run hooks:install
-npm run ralph:plan -- "add a small feature"
-npm run ralph:run -- docs/plans/active/<slug>.md
 npm run adr:review -- --none --reason "Routine change; no architectural decision."
 ```
 

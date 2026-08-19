@@ -37,11 +37,14 @@ test("loads a workflow route and keeps the editor accessible", async ({ page, re
   await expect(navbar.getByText("Memory Recorder", { exact: true })).toBeVisible();
   await expect(navbar.getByRole("button", { name: "Save workflow" })).toBeDisabled();
   await expect(navbar.getByRole("button", { name: "Finish recording" })).toBeDisabled();
+  await expect(navbar.getByRole("button", { name: "Collapse workflow timeline" })).toBeVisible();
+  await expect(navbar.getByRole("button", { name: "Run workflow" })).toHaveCount(0);
+  await expect(navbar.getByRole("button", { name: "Export workflow" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /workflow steps/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /fresh cloud browser/i })).toBeVisible();
   await expect(browserNavigation.getByRole("button", { name: /start recording/i })).toBeVisible();
 
-  await page.getByRole("button", { name: /collapse workflow timeline/i }).click();
+  await navbar.getByRole("button", { name: /collapse workflow timeline/i }).click();
   const rail = page.locator(".workspace-rail");
   await expect(rail.getByRole("button", { name: /expand workflow timeline/i })).toBeFocused();
   await expect(rail.getByRole("button", { name: /save workflow/i })).toBeDisabled();

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, ChevronRight, Download, Pencil, Play, Radio, Save } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Pencil, Radio, Save } from "lucide-react";
 import Link from "next/link";
 import { RecorderControls } from "@/features/recorder";
 import type { WorkflowStatus } from "@/shared/contracts/workflow/domain";
@@ -17,14 +17,13 @@ interface WorkspaceNavbarProps {
   transportStatus: TransportStatus;
   stepCount: number;
   onNameChange: (name: string) => void;
+  onCollapse: () => void;
   onExpand: () => void;
   onStart: () => void;
   onStop: () => void;
-  onExport: () => void;
   onSave?: () => void;
   onFinish?: () => void;
-  onReplay?: () => void;
-  replayDisabled?: boolean;
+  collapseDisabled?: boolean;
   locked?: boolean;
 }
 
@@ -37,14 +36,13 @@ export function WorkspaceNavbar({
   transportStatus,
   stepCount,
   onNameChange,
+  onCollapse,
   onExpand,
   onStart,
   onStop,
-  onExport,
   onSave = () => undefined,
   onFinish = () => undefined,
-  onReplay = () => undefined,
-  replayDisabled = false,
+  collapseDisabled = false,
   locked = false,
 }: WorkspaceNavbarProps) {
   const saving = saveState === "saving";
@@ -105,26 +103,6 @@ export function WorkspaceNavbar({
             <Check size={18} aria-hidden="true" />
           </button>
         ) : null}
-        <button
-          className="workspace-rail-button"
-          type="button"
-          onClick={onReplay}
-          disabled={locked || replayDisabled}
-          aria-label="Run workflow"
-          title="Run workflow"
-        >
-          <Play size={18} aria-hidden="true" />
-        </button>
-        <button
-          className="workspace-rail-button"
-          type="button"
-          onClick={onExport}
-          disabled={locked || !stepCount}
-          aria-label="Export workflow"
-          title="Export workflow"
-        >
-          <Download size={18} aria-hidden="true" />
-        </button>
       </aside>
     );
   }
@@ -139,22 +117,13 @@ export function WorkspaceNavbar({
         <button
           className="icon-button"
           type="button"
-          onClick={onExport}
-          disabled={locked || !stepCount}
-          aria-label="Export workflow"
-          title="Export workflow"
+          id="timeline-collapse"
+          onClick={onCollapse}
+          disabled={collapseDisabled}
+          aria-label="Collapse workflow timeline"
+          title="Collapse timeline"
         >
-          <Download size={18} aria-hidden="true" />
-        </button>
-        <button
-          className="icon-button"
-          type="button"
-          onClick={onReplay}
-          disabled={locked || replayDisabled}
-          aria-label="Run workflow"
-          title="Run workflow"
-        >
-          <Play size={18} aria-hidden="true" />
+          <ChevronLeft size={18} aria-hidden="true" />
         </button>
       </div>
       <Link className="workspace-library-link" href="/library">

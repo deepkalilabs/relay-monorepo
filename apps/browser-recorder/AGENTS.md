@@ -13,8 +13,8 @@ repository-wide tooling, and cross-project verification. Read it before this gui
   them inside the recorder or change their public exports as part of unrelated work.
 - Recorder-specific documentation remains owned here until its approved move. Accepted
   ADRs are immutable; add a later ADR that explicitly supersedes an earlier decision.
-- Repository-wide agent configuration, hooks, Ralph orchestration, and code-intelligence
-  tooling belong at the repository root, not in this project.
+- Repository-wide agent configuration, hooks, and repository tooling belong at the
+  repository root, not in this project.
 
 ## Verification
 
