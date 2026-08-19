@@ -5,7 +5,6 @@ import { BrowserPanel } from "@/features/browser";
 import { RecorderControls } from "@/features/recorder";
 import { ReplayControls, ReplayFailurePanel, RunWorkflowDialog } from "@/features/replay";
 import { AssertionStepDialog, StepEditor, WorkflowTimeline } from "@/features/workflow-editor";
-import { Modal } from "@/shared/ui/modal";
 import { WorkspaceNavbar } from "./WorkspaceNavbar";
 import { useWorkspaceController } from "../_hooks/useWorkspaceController";
 
@@ -78,18 +77,13 @@ export function RecorderWorkspace({ workflowId, profileId, autoRun }: RecorderWo
               transportStatus={recorder.model.transportStatus}
               stepCount={workflowState.workflow.steps.length}
               onNameChange={workflow.actions.rename}
+              onCollapse={layout.actions.collapseTimeline}
               onExpand={layout.actions.expandTimeline}
               onStart={recorder.actions.start}
               onStop={recorder.actions.stop}
-              onExport={workflow.actions.requestExport}
               onSave={() => void workflow.actions.save()}
               onFinish={() => void workflow.actions.finish()}
-              onReplay={() => replay.actions.request()}
-              replayDisabled={
-                !workflowState.workflow.steps.some((step) => step.enabled)
-                || workflow.model.locked
-                || recorder.model.transportStatus === "offline"
-              }
+              collapseDisabled={workflow.model.reviewLocked}
               locked={workflow.model.locked}
             />
             {!layout.model.timelineCollapsed ? (
@@ -103,7 +97,6 @@ export function RecorderWorkspace({ workflowId, profileId, autoRun }: RecorderWo
                   onReorder={workflow.actions.reorderSteps}
                   onAddAssertion={dialogs.actions.addAssertion}
                   assertionAvailable={dialogs.model.assertionAvailable}
-                  onCollapse={layout.actions.collapseTimeline}
                   replayResults={replay.model.results}
                   locked={workflow.model.locked}
                   reviewLocked={workflow.model.reviewLocked}
@@ -316,23 +309,6 @@ export function RecorderWorkspace({ workflowId, profileId, autoRun }: RecorderWo
         onClose={dialogs.actions.closeRun}
         onRun={replay.actions.start}
       />
-      <Modal
-        open={dialogs.model.confirmation === "sensitiveExport"}
-        title="This export contains sensitive values"
-        description="Passwords, tokens, or payment-related fields were detected."
-        onClose={dialogs.actions.closeConfirmation}
-      >
-        <p className="modal-copy">
-          The downloaded JSON contains recorded values in plain text. Store it like a secret and do not commit it to
-          source control.
-        </p>
-        <div className="modal-actions">
-          <button className="button button-ghost" type="button" onClick={dialogs.actions.closeConfirmation}>Cancel</button>
-          <button className="button button-danger" type="button" onClick={dialogs.actions.confirmSensitiveExport}>
-            Export sensitive JSON
-          </button>
-        </div>
-      </Modal>
     </>
   );
 }

@@ -36,7 +36,6 @@ describe("WorkflowTimeline", () => {
         onReorder={vi.fn()}
         onAddAssertion={vi.fn()}
         assertionAvailable
-        onCollapse={vi.fn()}
         replayResults={{ [step.id]: { status: "passed" } }}
       />,
     );
@@ -62,7 +61,6 @@ describe("WorkflowTimeline", () => {
         onReorder={vi.fn()}
         onAddAssertion={onAddAssertion}
         assertionAvailable
-        onCollapse={vi.fn()}
       />,
     );
 
@@ -86,7 +84,6 @@ describe("WorkflowTimeline", () => {
         onReorder={vi.fn()}
         onAddAssertion={onAddAssertion}
         assertionAvailable={false}
-        onCollapse={vi.fn()}
       />,
     );
 
@@ -199,20 +196,19 @@ describe("Assertion step creation", () => {
 });
 
 describe("WorkspaceNavbar", () => {
-  it("moves workflow identity and export into the expanded sidebar navbar", async () => {
+  it("shows workflow identity and collapse in the expanded sidebar navbar without run or export actions", async () => {
     const user = userEvent.setup();
     const onNameChange = vi.fn();
-    const onExport = vi.fn();
-    const { rerender } = render(<WorkspaceNavbar collapsed={false} workflowName="Checkout" status="idle" transportStatus="connected" stepCount={0} onNameChange={onNameChange} onExpand={vi.fn()} onStart={vi.fn()} onStop={vi.fn()} onExport={onExport} />);
+    const onCollapse = vi.fn();
+    render(<WorkspaceNavbar collapsed={false} workflowName="Checkout" status="idle" transportStatus="connected" stepCount={0} onNameChange={onNameChange} onCollapse={onCollapse} onExpand={vi.fn()} onStart={vi.fn()} onStop={vi.fn()} />);
 
     expect(screen.getByText("Memory Recorder")).toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: /workflow name/i }), " flow");
     expect(onNameChange).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /export/i })).toBeDisabled();
-
-    rerender(<WorkspaceNavbar collapsed={false} workflowName="Checkout" status="idle" transportStatus="connected" stepCount={1} onNameChange={onNameChange} onExpand={vi.fn()} onStart={vi.fn()} onStop={vi.fn()} onExport={onExport} />);
-    await user.click(screen.getByRole("button", { name: /export/i }));
-    expect(onExport).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: "Collapse workflow timeline" }));
+    expect(onCollapse).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Run workflow" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export workflow" })).not.toBeInTheDocument();
   });
 
   it("shows explicit save state and only offers finish for drafts", async () => {
@@ -229,10 +225,10 @@ describe("WorkspaceNavbar", () => {
         transportStatus="connected"
         stepCount={1}
         onNameChange={vi.fn()}
+        onCollapse={vi.fn()}
         onExpand={vi.fn()}
         onStart={vi.fn()}
         onStop={vi.fn()}
-        onExport={vi.fn()}
         onSave={onSave}
         onFinish={onFinish}
       />,
@@ -256,10 +252,10 @@ describe("WorkspaceNavbar", () => {
         transportStatus="connected"
         stepCount={1}
         onNameChange={vi.fn()}
+        onCollapse={vi.fn()}
         onExpand={vi.fn()}
         onStart={vi.fn()}
         onStop={vi.fn()}
-        onExport={vi.fn()}
         onSave={onSave}
         onFinish={onFinish}
       />,
@@ -268,30 +264,28 @@ describe("WorkspaceNavbar", () => {
     expect(navbar.queryByRole("button", { name: "Finish recording" })).not.toBeInTheDocument();
   });
 
-  it("keeps core controls available in the collapsed rail", async () => {
+  it("keeps recording and expansion controls available in the collapsed rail", async () => {
     const user = userEvent.setup();
     const onExpand = vi.fn();
     const onStart = vi.fn();
-    const onExport = vi.fn();
-    const { container } = render(<WorkspaceNavbar collapsed workflowName="Checkout" status="idle" transportStatus="connected" stepCount={1} onNameChange={vi.fn()} onExpand={onExpand} onStart={onStart} onStop={vi.fn()} onExport={onExport} />);
+    const { container } = render(<WorkspaceNavbar collapsed workflowName="Checkout" status="idle" transportStatus="connected" stepCount={1} onNameChange={vi.fn()} onCollapse={vi.fn()} onExpand={onExpand} onStart={onStart} onStop={vi.fn()} />);
     const rail = within(container);
 
     await user.click(rail.getByRole("button", { name: /expand workflow timeline/i }));
     await user.click(rail.getByRole("button", { name: /start recording/i }));
-    await user.click(rail.getByRole("button", { name: /export workflow/i }));
 
     expect(onExpand).toHaveBeenCalledOnce();
     expect(onStart).toHaveBeenCalledOnce();
-    expect(onExport).toHaveBeenCalledOnce();
+    expect(rail.queryByRole("button", { name: /export workflow/i })).not.toBeInTheDocument();
+    expect(rail.queryByRole("button", { name: /run workflow/i })).not.toBeInTheDocument();
   });
 
-  it("locks expanded workflow controls during CAPTCHA solving", () => {
-    const { container } = render(<WorkspaceNavbar collapsed={false} workflowName="Checkout" status="recording" transportStatus="connected" stepCount={1} locked onNameChange={vi.fn()} onExpand={vi.fn()} onStart={vi.fn()} onStop={vi.fn()} onExport={vi.fn()} />);
+  it("locks editing and collapse controls during CAPTCHA solving", () => {
+    const { container } = render(<WorkspaceNavbar collapsed={false} workflowName="Checkout" status="recording" transportStatus="connected" stepCount={1} locked collapseDisabled onNameChange={vi.fn()} onCollapse={vi.fn()} onExpand={vi.fn()} onStart={vi.fn()} onStop={vi.fn()} />);
     const navbar = within(container);
 
     expect(navbar.getByRole("textbox", { name: /workflow name/i })).toBeDisabled();
-    expect(navbar.getByRole("button", { name: /export workflow/i })).toBeDisabled();
-    expect(navbar.getByRole("button", { name: /run workflow/i })).toBeDisabled();
+    expect(navbar.getByRole("button", { name: /collapse workflow timeline/i })).toBeDisabled();
   });
 });
 

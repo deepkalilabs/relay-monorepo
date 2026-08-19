@@ -21,7 +21,6 @@ import {
   CheckCircle2,
   CheckSquare,
   CalendarDays,
-  ChevronLeft,
   ChevronsUpDown,
   CircleDashed,
   GripVertical,
@@ -61,7 +60,6 @@ interface TimelineProps {
   onReorder: (activeId: string, overId: string) => void;
   onAddAssertion: () => void;
   assertionAvailable: boolean;
-  onCollapse: () => void;
   replayResults?: Record<string, ReplayStepResultState>;
   locked?: boolean;
   reviewLocked?: boolean;
@@ -111,7 +109,7 @@ function SortableStep({ step, selected, result, locked, reviewLocked, onSelect, 
   );
 }
 
-export function WorkflowTimeline({ steps, selectedId, onSelect, onToggle, onDelete, onReorder, onAddAssertion, assertionAvailable, onCollapse, replayResults = {}, locked = false, reviewLocked = false }: TimelineProps) {
+export function WorkflowTimeline({ steps, selectedId, onSelect, onToggle, onDelete, onReorder, onAddAssertion, assertionAvailable, replayResults = {}, locked = false, reviewLocked = false }: TimelineProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -129,9 +127,6 @@ export function WorkflowTimeline({ steps, selectedId, onSelect, onToggle, onDele
         <div className="panel-heading-actions">
           <button className="icon-button" type="button" disabled={locked || !assertionAvailable} onClick={onAddAssertion} aria-label="Add assertion" title="Add assertion">
             <Plus size={18} aria-hidden="true" />
-          </button>
-          <button id="timeline-collapse" className="icon-button" type="button" disabled={reviewLocked} onClick={onCollapse} aria-label="Collapse workflow timeline" title="Collapse timeline">
-            <ChevronLeft size={18} aria-hidden="true" />
           </button>
         </div>
       </div>
