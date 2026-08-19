@@ -194,12 +194,10 @@ function assertAcceptedAdrsUnchanged(state) {
   const changed = state.entries
     .filter((entry) => {
       if (entry.status === "A") return false;
-      if (
-        entry.status === "R100" &&
-        adrDirectoryForPath(entry.sourcePath) &&
-        adrDirectoryForPath(entry.path)
-      ) {
-        return false;
+      if (entry.status === "R100") {
+        const sourceDirectory = adrDirectoryForPath(entry.sourcePath);
+        if (!sourceDirectory) return false;
+        return !adrDirectoryForPath(entry.path);
       }
       return (
         adrDirectoryForPath(entry.sourcePath) ||
@@ -215,11 +213,10 @@ function assertRemoteAdrsPreserved(remoteOid, localOid) {
   const changed = diffEntries(remoteOid, localOid, ADR_DIRECTORIES)
     .filter((entry) => {
       if (entry.status === "A") return false;
-      return !(
-        entry.status === "R100" &&
-        adrDirectoryForPath(entry.sourcePath) &&
-        adrDirectoryForPath(entry.path)
-      );
+      if (entry.status !== "R100") return true;
+      const sourceDirectory = adrDirectoryForPath(entry.sourcePath);
+      if (!sourceDirectory) return false;
+      return !adrDirectoryForPath(entry.path);
     })
     .map((entry) => entry.sourcePath ?? entry.path);
   if (changed.length > 0) throw immutableAdrError(changed);
@@ -229,7 +226,10 @@ function addedAdrPaths(state) {
   return state.entries
     .filter(
       (entry) =>
-        entry.status === "A" && adrDirectoryForPath(entry.path),
+        adrDirectoryForPath(entry.path) &&
+        (entry.status === "A" ||
+          (entry.status === "R100" &&
+            !adrDirectoryForPath(entry.sourcePath))),
     )
     .map((entry) => {
       const directory = adrDirectoryForPath(entry.path);
