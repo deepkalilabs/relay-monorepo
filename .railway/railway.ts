@@ -17,7 +17,7 @@ export default defineRailway((context) => {
     throw new Error("Railway IaC is restricted to the development environment.");
   }
 
-  const database = postgres("Postgres", { region });
+  const database = postgres("Postgres-development", { region });
   const workflowBucket = bucket("relay-workflows-development", { region: "sjc" });
 
   const api = service("relay-backend", {
@@ -97,6 +97,7 @@ export default defineRailway((context) => {
     healthcheck: "/",
     healthcheckTimeout: 300,
     replicas: { [region]: 1 },
+    networking: { privateNetworkEndpoint: "relayfrontend" },
     env: {
       PORT: "3000",
       BROWSERBASE_API_KEY: context.shared.BROWSERBASE_API_KEY,

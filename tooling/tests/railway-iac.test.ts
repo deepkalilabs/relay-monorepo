@@ -24,7 +24,7 @@ describe("Railway development infrastructure", () => {
 
     expect(definition.name).toBe("shimmering-hope");
     expect(definition.resources.map(({ address }) => address)).toEqual([
-      "database.Postgres",
+      "database.Postgres-development",
       "bucket.relay-workflows-development",
       "service.relay-backend",
       "service.relay-automation",
@@ -67,7 +67,7 @@ describe("Railway development infrastructure", () => {
     expect(bucket).toMatchObject({ config: { region: "sjc" } });
     expect(api).toMatchObject({
       variables: {
-        DATABASE_URL: { type: "reference", resource: "database.Postgres", output: "DATABASE_URL" },
+        DATABASE_URL: { type: "reference", resource: "database.Postgres-development", output: "DATABASE_URL" },
         BUCKET: { type: "reference", resource: "bucket.relay-workflows-development", output: "BUCKET" },
         AUTOMATION_SERVICE_URL: {
           type: "literal",
@@ -84,6 +84,7 @@ describe("Railway development infrastructure", () => {
     });
     expect(automation).not.toHaveProperty("networking.customDomains");
     expect(frontend).toMatchObject({
+      networking: { privateNetworkEndpoint: "relayfrontend" },
       variables: {
         RELAY_API_BASE_URL: {
           type: "literal",
