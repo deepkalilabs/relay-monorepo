@@ -7,7 +7,8 @@
 - `relay-backend`, built from `apps/relay-api/Dockerfile`;
 - private `relay-automation`, built from
   `apps/automation-service-browserbase/Dockerfile`;
-- Railway PostgreSQL, including Railway-managed database storage; and
+- Railway PostgreSQL named `Postgres-development`, including Railway-managed database
+  storage; and
 - the private `relay-workflows-development` bucket in `sjc`.
 
 No application volume is declared. All three services deploy one `us-west2` replica

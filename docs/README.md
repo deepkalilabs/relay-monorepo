@@ -26,6 +26,9 @@ generic `plan.md`, `todo.md`, or runtime-generated context files as durable docu
 
 - [`decisions/0001-manage-development-railway-infrastructure-as-code.md`](decisions/0001-manage-development-railway-infrastructure-as-code.md)
   records the project-level Railway development topology and rollout boundary.
+- [`decisions/0002-isolate-development-railway-resource-identities.md`](decisions/0002-isolate-development-railway-resource-identities.md)
+  records the environment-specific PostgreSQL identity and explicit private-network
+  endpoint required for stable Railway IaC reconciliation.
 
 Private execution state belongs in ignored `.agent/runtime/` or `.ralphex/` state, never
 in tracked planning documents.
