@@ -346,6 +346,47 @@ describe("ADR pre-push gate", () => {
     );
   });
 
+  it("allows byte-identical ADR relocations and rejects changed moves", () => {
+    const { repo } = createRepository();
+    mkdirSync(join(repo, "apps", "browser-recorder", "docs", "decisions"), {
+      recursive: true,
+    });
+    git(
+      repo,
+      "mv",
+      "docs/decisions/0001-existing.md",
+      "apps/browser-recorder/docs/decisions/0001-existing.md",
+    );
+    git(repo, "commit", "-m", "relocate accepted decision");
+
+    expectSuccess(
+      runGate(repo, [
+        "review",
+        "--none",
+        "--reason",
+        "Relocates an accepted ADR without changing its contents.",
+      ]),
+    );
+
+    commitFile(
+      repo,
+      "apps/browser-recorder/docs/decisions/0001-existing.md",
+      "# ADR 0001: Changed during relocation\n",
+      "change relocated decision",
+    );
+    const changed = runGate(repo, [
+      "review",
+      "--none",
+      "--reason",
+      "Incorrectly changed an accepted ADR.",
+    ]);
+
+    expect(changed.status).not.toBe(0);
+    expect(`${changed.stdout}\n${changed.stderr}`).toContain(
+      "Accepted ADRs are immutable",
+    );
+  });
+
   it("allows remote branch deletion without a review", () => {
     const { repo } = createRepository();
     expectSuccess(

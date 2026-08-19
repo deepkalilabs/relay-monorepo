@@ -1,7 +1,7 @@
 # Relay Monorepo Refactor
 
 - Status: Approved
-- Decision: `frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`
+- Decision: `apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`
 - Delivery: Three merge-gated pull requests
 - Behavior change: None from the structural refactor
 

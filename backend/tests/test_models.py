@@ -327,7 +327,7 @@ def test_shared_conformance_fixtures_match_python_and_published_schemas() -> Non
     openapi_validators = [
         _workflow_validator(repository_root / "backend/openapi.yaml"),
         _workflow_validator(
-            repository_root / "frontend/docs/specs/cloud-workflow-api.openapi.yaml"
+            repository_root / "apps/browser-recorder/docs/specs/cloud-workflow-api.openapi.yaml"
         ),
     ]
 

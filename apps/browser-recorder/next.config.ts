@@ -7,7 +7,7 @@ const frontendRoot = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   turbopack: {
-    root: path.resolve(frontendRoot, ".."),
+    root: path.resolve(frontendRoot, "../.."),
   },
 };
 

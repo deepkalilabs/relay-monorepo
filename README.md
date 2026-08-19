@@ -8,7 +8,7 @@ their current Node projects without changing application or deployment ownership
 
 | Project | Purpose | Documentation |
 | --- | --- | --- |
-| [`frontend/`](frontend/) | Next.js application, local BFF, recorder WebSocket, and interactive replay | [`frontend/README.md`](frontend/README.md) |
+| [`apps/browser-recorder/`](apps/browser-recorder/) | Next.js application, local BFF, recorder WebSocket, and interactive replay | [`apps/browser-recorder/README.md`](apps/browser-recorder/README.md) |
 | [`backend/`](backend/) | FastAPI persistence API and the existing Browserbase automation packages | [`backend/README.md`](backend/README.md) |
 
 The root Node workspace provides cross-project build and verification commands. Use it
@@ -59,7 +59,7 @@ be used as durable project context.
 Start the frontend:
 
 ```bash
-cd frontend
+cd apps/browser-recorder
 npm install
 cp .env.example .env.local
 npm run dev
@@ -84,7 +84,7 @@ delegating provider-neutral behavior to the shared replay engine. The frontend k
 its interactive state machine and delegates the same provider-neutral phases to
 replay-core.
 
-Local frontend and backend commands continue to use `frontend/` or `backend/` as their
+Local recorder and backend commands use `apps/browser-recorder/` or `backend/` as their
 working directory. Both Docker images now use the repository root as their build context
 so they can consume sibling packages and contracts.
 
@@ -93,14 +93,14 @@ so they can consume sibling packages and contracts.
 Application documentation remains within its owning directory, while repository-wide
 plans and agent workflows live under [`docs/`](docs/). The decision to adopt the current
 layout is recorded in
-[`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
+[`apps/browser-recorder/docs/decisions/0019-use-a-multi-project-monorepo.md`](apps/browser-recorder/docs/decisions/0019-use-a-multi-project-monorepo.md).
 The additive workspace migration is recorded in
-[`frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
+[`apps/browser-recorder/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](apps/browser-recorder/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
 The shared replay input and canonical schema `1.4` decision is recorded in
-[`frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
+[`apps/browser-recorder/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](apps/browser-recorder/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
 The shared replay execution boundary is recorded in
-[`frontend/docs/decisions/0023-share-replay-execution-primitives.md`](frontend/docs/decisions/0023-share-replay-execution-primitives.md).
+[`apps/browser-recorder/docs/decisions/0023-share-replay-execution-primitives.md`](apps/browser-recorder/docs/decisions/0023-share-replay-execution-primitives.md).
 The approved three-increment repository and agent-tooling normalization is recorded in
-[`frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
+[`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
 and tracked by
 [`docs/plans/active/relay-monorepo-refactor.md`](docs/plans/active/relay-monorepo-refactor.md).

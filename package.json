@@ -7,7 +7,7 @@
   "workspaces": [
     "packages/workflow-contract",
     "packages/replay-core",
-    "frontend",
+    "apps/browser-recorder",
     "packages/automation-core",
     "packages/automation-worker-browserbase",
     "apps/automation-service-browserbase"

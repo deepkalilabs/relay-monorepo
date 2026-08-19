@@ -4,6 +4,6 @@ import nextConfig from "../next.config";
 
 describe("Next.js configuration", () => {
   it("anchors Turbopack to the root Node workspace", () => {
-    expect(nextConfig.turbopack?.root).toBe(path.resolve(__dirname, "../.."));
+    expect(nextConfig.turbopack?.root).toBe(path.resolve(__dirname, "../../.."));
   });
 });

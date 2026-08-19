@@ -1,6 +1,6 @@
 # Browser recorder agent guide
 
-The root [`AGENTS.md`](../AGENTS.md) is authoritative for Git safety, ADR review,
+The root [`AGENTS.md`](../../AGENTS.md) is authoritative for Git safety, ADR review,
 repository-wide tooling, and cross-project verification. Read it before this guide.
 
 ## Ownership and boundaries

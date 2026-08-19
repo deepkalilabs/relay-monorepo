@@ -3,12 +3,12 @@
 This file is the repository-wide authority for Git safety, architectural review,
 project routing, and verification. The repository is being normalized in the
 merge-gated sequence recorded by
-[`frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md).
+[`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md).
 Until those moves land, treat the current paths below as the ownership boundaries.
 
 ## Read before changing files
 
-- Recorder work under `frontend/`: read [`frontend/AGENTS.md`](frontend/AGENTS.md).
+- Recorder work under `apps/browser-recorder/`: read [`apps/browser-recorder/AGENTS.md`](apps/browser-recorder/AGENTS.md).
 - API or backend-owned automation work under `backend/`: read
   [`backend/AGENTS.md`](backend/AGENTS.md).
 - Shared root workspace or repository tooling work: follow this guide and also read
@@ -19,8 +19,8 @@ the repository-wide policy in this file.
 
 ## Repository boundaries
 
-- Keep recorder code, tests, documentation, and deployment files in `frontend/` until
-  the approved application move.
+- Keep recorder code, tests, documentation, and deployment files in
+  `apps/browser-recorder/`.
 - Keep API dependency management, migrations, contracts, automation packages,
   documentation, and deployment files in `backend/` until their approved moves.
 - Keep repository-wide agent configuration, hooks, orchestration, and code-intelligence
@@ -62,7 +62,7 @@ directory and record every added ADR before push:
 
 ```sh
 npm run adr:review -- \
-  --adr frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md \
+  --adr apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md \
   --reason "Records the reviewed repository ownership and layout decision."
 ```
 
@@ -80,7 +80,7 @@ review. Install the tracked hook after cloning with `npm run hooks:install`.
 
 - Root tooling: `npm run test:tooling` plus the affected root command.
 - Root Node workspace: `npm run typecheck` and the affected root test command.
-- Recorder: run `npm run test:changed` from `frontend/`; if Vitest finds no affected
+- Recorder: run `npm run test:changed` from `apps/browser-recorder/`; if Vitest finds no affected
   tests, report that result instead of substituting the full suite.
 - Backend API and backend-owned automation: run the checks in `backend/AGENTS.md`.
 - Cross-project work: run every applicable project check.

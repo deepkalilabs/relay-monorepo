@@ -22,6 +22,8 @@ const ADR_DIRECTORIES = [
   "docs/decisions",
   "frontend/docs/decisions",
   "backend/docs/decisions",
+  "apps/browser-recorder/docs/decisions",
+  "apps/relay-api/docs/decisions",
 ];
 
 function command(commandName, args, options = {}) {
@@ -279,7 +281,7 @@ function addedAdrs(root, checkpoint) {
     [
       "diff",
       "--name-status",
-      "--no-renames",
+      "--find-renames=100%",
       checkpoint,
       "HEAD",
       "--",

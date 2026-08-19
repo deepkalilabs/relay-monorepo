@@ -212,7 +212,7 @@ For local development, `npm run dev` also loads an existing, gitignored `secret.
 | `npm run test:browserbase` | Run the paid Browserbase smoke test |
 
 Repository-wide agent commands, hooks, and the supervised Ralph loop run from the
-repository root. See [`../docs/README.md`](../docs/README.md) and the root
+repository root. See [`../../docs/README.md`](../../docs/README.md) and the root
 [`README.md`](../README.md).
 
 ## Security and session lifecycle
@@ -255,6 +255,6 @@ BROWSERBASE_API_KEY=... npm run test:browserbase
 
 For current product direction, see [docs/product/roadmap.md](./docs/product/roadmap.md).
 For implementation and architecture context, see the archived
-[profile-parameterization plan](../docs/plans/archive/browser-recorder-profile-parameterization.md),
+[profile-parameterization plan](../../docs/plans/archive/browser-recorder-profile-parameterization.md),
 [Refactor_plan.md](./Refactor_plan.md), and the historical
 [docs/product/mvp_design.md](./docs/product/mvp_design.md).
