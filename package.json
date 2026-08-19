@@ -41,6 +41,11 @@
     "test:contract": "npm run schema:check --workspace @relay/workflow-contract && npm test --workspace @relay/workflow-contract",
     "test:changed": "npm run test:changed --workspace browser-memory-recorder",
     "test:tooling": "vitest run --config tooling/vitest.config.mts",
-    "typecheck": "npm run build --workspace @relay/workflow-contract && npm run build --workspace @relay/replay-core && npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run build --workspace @relay/workflow-contract && npm run build --workspace @relay/replay-core && npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run typecheck --workspaces --if-present",
+    "verify:locks": "node tooling/repository/verify-node-lockfiles.mjs",
+    "verify:recorder": "npm run build --workspace @relay/workflow-contract && npm run build --workspace @relay/replay-core && npm run typecheck --workspace browser-memory-recorder && npm run lint --workspace browser-memory-recorder && npm run test:changed --workspace browser-memory-recorder && npm run build --workspace browser-memory-recorder",
+    "verify:api": "uv --directory apps/relay-api lock --check && uv --directory apps/relay-api run ruff check src tests migrations && uv --directory apps/relay-api run ruff format --check src tests && uv --directory apps/relay-api run pytest && uv --directory apps/relay-api run python -m openapi_spec_validator openapi.yaml && uv --directory apps/relay-api run python -m openapi_spec_validator ../automation-service-browserbase/openapi.yaml",
+    "verify:automation": "npm run test:automation && npm run typecheck --workspace @relay/workflow-contract --workspace @relay/replay-core --workspace @relay/automation-core --workspace @relay/automation-worker-browserbase --workspace @relay/automation-service-browserbase",
+    "verify:all": "npm run verify:locks && npm run test:tooling && npm run verify:recorder && npm run verify:automation && npm run verify:api"
   }
 }
