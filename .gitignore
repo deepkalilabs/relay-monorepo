@@ -1,4 +1,8 @@
 /node_modules/
 /packages/*/dist/
 /packages/*/node_modules/
+/tooling/agent-code-intel/.venv/
+**/.agent/runtime/
+/.ralphex/progress/
+/.ralphex/worktrees/
 *.tsbuildinfo

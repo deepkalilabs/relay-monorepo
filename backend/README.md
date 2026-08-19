@@ -299,6 +299,6 @@ to expose publicly.
 ## Browser handoff
 
 The browser automation client still needs the separate integration described in
-[`tasks/browser-remote-batch-gateway-handoff.md`](tasks/browser-remote-batch-gateway-handoff.md).
+[`../docs/handoffs/browser-remote-batch-gateway.md`](../docs/handoffs/browser-remote-batch-gateway.md).
 In summary: remove `AUTOMATION_SERVICE_TOKEN`, use Relay HTTP Basic credentials only at
 the public `RELAY_API_BASE_URL`, and keep batch creation non-retrying.

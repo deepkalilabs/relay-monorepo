@@ -30,7 +30,29 @@ npm ci
 npm run typecheck
 npm run test:automation
 npm run test:changed
+npm run test:tooling
 ```
+
+## Repository agent workflow
+
+Read the root [`AGENTS.md`](AGENTS.md) and then the nearest project guide before making
+changes. Repository-wide Codex, hook, Ralph, ADR-gate, and code-intelligence support is
+owned by [`.codex/`](.codex/), [`.githooks/`](.githooks/), [`.ralphex/`](.ralphex/), and
+[`tooling/`](tooling/).
+
+From the repository root:
+
+```bash
+uv sync --directory tooling/agent-code-intel
+npm run hooks:install
+npm run ralph:plan -- "add a small feature"
+npm run ralph:run -- docs/plans/active/<slug>.md
+npm run adr:review -- --none --reason "Routine change; no architectural decision."
+```
+
+Active plans, archived plans, handoffs, and the workflow specifications are indexed in
+[`docs/README.md`](docs/README.md). Runtime-generated agent state is ignored and must not
+be used as durable project context.
 
 ## Quick start
 
@@ -67,7 +89,8 @@ from the repository root with `backend/Dockerfile.automation`.
 
 ## Repository decisions
 
-Project documentation remains within its owning directory. The decision to adopt this
+Application documentation remains within its owning directory, while repository-wide
+plans and agent workflows live under [`docs/`](docs/). The decision to adopt the current
 layout is recorded in
 [`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
 The additive workspace migration is recorded in
@@ -76,3 +99,7 @@ The shared replay input and canonical schema `1.4` decision is recorded in
 [`frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
 The shared replay execution boundary is recorded in
 [`frontend/docs/decisions/0023-share-replay-execution-primitives.md`](frontend/docs/decisions/0023-share-replay-execution-primitives.md).
+The approved three-increment repository and agent-tooling normalization is recorded in
+[`frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
+and tracked by
+[`docs/plans/active/relay-monorepo-refactor.md`](docs/plans/active/relay-monorepo-refactor.md).

@@ -1,0 +1,16 @@
+Review the committed diff from {{DEFAULT_BRANCH}} to HEAD for documentation and
+architecture-decision gaps.
+
+Read README.md and AGENTS.md before reporting anything. Check that new commands,
+dependencies, configuration, operating constraints, and recovery steps are
+documented accurately.
+
+Apply the ADR threshold in AGENTS.md to the actual diff. Report a confirmed issue
+when the increment introduces an expensive-to-reverse architectural decision but
+does not add a correctly numbered ADR in the owning decision directory described
+by AGENTS.md. Never suggest rewriting an accepted ADR; changed decisions require a
+new superseding ADR.
+
+For each finding, identify the triggering file and the documentation or ADR that
+is missing or stale. Do not report documentation already present, routine
+implementation details, formatting, test-only changes, or lockfile churn.

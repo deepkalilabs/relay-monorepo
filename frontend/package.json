@@ -6,14 +6,10 @@
     "node": ">=24 <27"
   },
   "scripts": {
-    "adr:review": "node scripts/adr-gate.mjs review",
     "dev": "set -a; [ ! -f secret.txt ] || . ./secret.txt; set +a; NODE_ENV=development tsx watch server.ts",
-    "hooks:install": "node scripts/adr-gate.mjs install",
     "build": "next build",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint . --max-warnings=0",
-    "ralph:plan": "node scripts/ralph-loop.mjs plan",
-    "ralph:run": "node scripts/ralph-loop.mjs run",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:changed": "vitest run --changed",
