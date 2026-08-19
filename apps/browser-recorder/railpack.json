@@ -1,4 +1,18 @@
 {
   "$schema": "https://schema.railpack.com",
-  "provider": "node"
+  "provider": "node",
+  "steps": {
+    "install": {
+      "commands": ["npm ci"]
+    },
+    "build": {
+      "inputs": [{ "step": "install" }],
+      "commands": [
+        "npm run build --workspace @relay/workflow-contract && npm run build --workspace @relay/replay-core && npm run build --workspace browser-memory-recorder"
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "npm run start --workspace browser-memory-recorder"
+  }
 }
