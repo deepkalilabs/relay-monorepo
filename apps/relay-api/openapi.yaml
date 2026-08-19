@@ -24,7 +24,7 @@ tags:
   - name: Runs
     description: Authenticated workflow resolution and streaming execution gateway.
 x-contract-semantics:
-  canonicalSchemaVersion: "1.4"
+  canonicalSchemaVersion: "1.5"
   maximumRequestBytes: 1048576
   maximumBatchResponseBytes: 1048576
   listOrdering: updatedAt descending
@@ -340,7 +340,7 @@ paths:
 
         The backend generates the UUID and timestamps and returns:
 
-        - `schemaVersion: "1.4"`
+        - `schemaVersion: "1.5"`
         - `name: "Untitled recording"`
         - `status: "draft"`
         - `revision: 1`
@@ -1268,7 +1268,8 @@ components:
           enum:
             - "1.2"
             - "1.4"
-          description: Version 1.4 is canonical; version 1.2 remains readable for compatibility.
+            - "1.5"
+          description: Version 1.5 is canonical; versions 1.2 and 1.4 remain readable for compatibility.
         id:
           type: string
           format: uuid
@@ -1296,6 +1297,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WorkflowStep"
+      allOf:
+        - if:
+            properties:
+              schemaVersion:
+                enum: ["1.2", "1.4"]
+          then:
+            properties:
+              steps:
+                items:
+                  not:
+                    required: [type, expectation]
+                    properties:
+                      type:
+                        const: assertion
+                      expectation:
+                        required: [kind]
+                        properties:
+                          kind:
+                            const: page_text_contains
 
     WorkflowStatus:
       type: string
@@ -1572,6 +1592,7 @@ components:
       oneOf:
         - $ref: "#/components/schemas/ElementAssertionStep"
         - $ref: "#/components/schemas/GroupExistsAssertionStep"
+        - $ref: "#/components/schemas/PageTextContainsAssertionStep"
 
     AssertionStepBase:
       type: object
@@ -1636,6 +1657,20 @@ components:
               $ref: "#/components/schemas/GroupExistsAssertionExpectation"
       unevaluatedProperties: false
 
+    PageTextContainsAssertionStep:
+      allOf:
+        - $ref: "#/components/schemas/AssertionStepBase"
+        - type: object
+          required:
+            - expectation
+          properties:
+            expectation:
+              $ref: "#/components/schemas/PageTextContainsAssertionExpectation"
+          not:
+            required:
+              - position
+      unevaluatedProperties: false
+
     VisibleAssertionExpectation:
       type: object
       additionalProperties: false
@@ -1671,6 +1706,22 @@ components:
         kind:
           type: string
           const: group_exists
+
+    PageTextContainsAssertionExpectation:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - expected
+      properties:
+        kind:
+          type: string
+          const: page_text_contains
+        expected:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: ".*\\S.*"
 
     RepeatedGroupTemplate:
       type: object

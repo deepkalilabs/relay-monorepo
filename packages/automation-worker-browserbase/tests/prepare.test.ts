@@ -6,13 +6,29 @@ describe("prepareWorkflow", () => {
   it("accepts all schema versions and rejects drafts", () => {
     const complete = completeWorkflow([fillStep("recorded", { source: "recorded" })]);
 
-    for (const schemaVersion of ["1.0", "1.3", "1.4", "next"]) {
+    for (const schemaVersion of ["1.0", "1.3", "1.4", "1.5", "next"]) {
       expect(prepareWorkflow({ ...complete, schemaVersion }, undefined, {}).workflow.schemaVersion)
         .toBe(schemaVersion);
     }
     expect(() => prepareWorkflow({ ...complete, status: "draft" }, undefined, {})).toThrow(
       expect.objectContaining({ code: "workflow_not_complete" }),
     );
+  });
+
+  it("preserves targetless page-text assertions for execution", () => {
+    const workflow = completeWorkflow([{
+      id: "page-text",
+      order: 0,
+      name: "John Snow exists",
+      enabled: true,
+      page: { id: "page-1", url: "https://example.com", title: "People" },
+      metadata: { recordedAt: "2026-08-02T12:00:00Z", origin: "manual", sensitive: false },
+      type: "assertion",
+      expectation: { kind: "page_text_contains", expected: "John Snow" },
+    }]);
+
+    expect(prepareWorkflow({ ...workflow, schemaVersion: "1.5" }, undefined, {}).workflow.steps[0])
+      .toMatchObject({ expectation: { kind: "page_text_contains", expected: "John Snow" } });
   });
 
   it("resolves recorded, fixed, profile, and runtime values without mutating the input", () => {

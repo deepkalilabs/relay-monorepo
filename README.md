@@ -136,3 +136,5 @@ The approved three-increment repository and agent-tooling normalization is recor
 [`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
 and tracked by
 [`docs/plans/active/relay-monorepo-refactor.md`](docs/plans/active/relay-monorepo-refactor.md).
+The targetless page-text assertion contract and privacy-preserving frame scan are recorded in
+[`apps/browser-recorder/docs/decisions/0025-add-page-text-scan-assertions.md`](apps/browser-recorder/docs/decisions/0025-add-page-text-scan-assertions.md).

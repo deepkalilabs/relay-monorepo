@@ -40,6 +40,7 @@ export interface ReplayAttempt {
 
 export type ReplayFailureDetail =
   | { kind: "text_mismatch"; expected: string; observed: string }
+  | { kind: "page_text_missing" }
   | { kind: "group_mismatch"; capturedMatchCount: number; highestSimilarities: number[] }
   | { kind: "group_candidate_limit"; candidateCount: number; maximumCandidates: number };
 

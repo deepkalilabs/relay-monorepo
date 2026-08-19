@@ -30,7 +30,7 @@ describe("FileWorkflowRepository", () => {
     const listed = await workflows.list();
 
     expect(created).toMatchObject({
-      schemaVersion: "1.4",
+      schemaVersion: "1.5",
       name: "Untitled recording",
       status: "draft",
       revision: 1,

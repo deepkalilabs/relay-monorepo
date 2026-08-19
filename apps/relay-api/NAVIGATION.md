@@ -13,8 +13,8 @@ Recorder's canonical workflow documents. A caller such as the recorder's local B
 sends complete workflow snapshots over HTTP. The backend authenticates the request,
 validates it against the canonical model, stores the canonical document in a private
 S3-compatible bucket, and publishes its metadata and active object key in PostgreSQL.
-New drafts and explicit saves use schema `1.4`; existing schema `1.2` documents remain
-readable without a bulk migration.
+New drafts and explicit saves use schema `1.5`; existing schema `1.2` and `1.4`
+documents remain readable without a bulk migration.
 
 The authenticated FastAPI boundary is the OpenAPI 3.1 contract in [`openapi.yaml`](openapi.yaml).
 It defines three namespace operations and five canonical namespace-scoped workflow
@@ -182,10 +182,11 @@ polling snapshots for one hour. All entry points share a configurable per-proces
 capacity that defaults to five. Batch state is not durable and disappears on restart.
 Neither execution mode shares the Python service's transaction, repository,
 authentication, or persistence infrastructure. The version value is opaque metadata
-and does not affect admission. Assertions resolve one visible target and evaluate once
-in workflow order without retries or post-assertion settling. Repeated-group assertions
-instead scan bounded visible structural candidates once and apply the shared contract's
-similarity rules.
+and does not affect admission. Assertions evaluate once in workflow order without
+retries or post-assertion settling. Element assertions resolve one visible target,
+repeated-group assertions scan bounded visible structural candidates, and page-text
+assertions scan the snapshotted visible frame tree without returning observed document
+text.
 
 For direct and batch work, the Browserbase worker can capture the visible viewport after
 automation-core returns and before provider cleanup. The service converts that image to

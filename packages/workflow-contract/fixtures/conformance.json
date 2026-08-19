@@ -1,6 +1,6 @@
 {
   "baseDocument": {
-    "schemaVersion": "1.4",
+    "schemaVersion": "1.5",
     "id": "4a3f63dd-c98b-4b3a-b452-5f2aa76022cf",
     "name": "Shared replay input",
     "status": "complete",
@@ -35,17 +35,31 @@
           "structureTokens": ["0:article:article", "1:header:"], "capturedMatchCount": 2
         },
         "expectation": { "kind": "group_exists" }
+      },
+      {
+        "id": "assert-page-text", "order": 3, "name": "John Snow exists", "enabled": true,
+        "page": { "id": "page-home", "url": "https://example.test" },
+        "metadata": { "recordedAt": "2026-08-17T10:01:00+02:00", "origin": "manual", "sensitive": false },
+        "type": "assertion",
+        "expectation": { "kind": "page_text_contains", "expected": "John Snow" }
       }
     ]
   },
   "cases": [
     {
-      "name": "canonical 1.4 actions and assertion families", "mutations": [],
-      "expected": { "canonical": true, "compatible": true, "normalizedVersion": "1.4", "executable": true, "persistence": true }
+      "name": "canonical 1.5 actions and assertion families", "mutations": [],
+      "expected": { "canonical": true, "compatible": true, "normalizedVersion": "1.5", "executable": true, "persistence": true }
     },
     {
       "name": "historical assertion-capable 1.2", "mutations": [{ "path": ["schemaVersion"], "value": "1.2" }],
-      "expected": { "canonical": false, "compatible": true, "normalizedVersion": "1.4", "executable": true, "persistence": true }
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": true, "persistence": false }
+    },
+    {
+      "name": "historical assertion-capable 1.4 without page text", "mutations": [
+        { "path": ["schemaVersion"], "value": "1.4" },
+        { "path": ["steps"], "value": [] }
+      ],
+      "expected": { "canonical": false, "compatible": true, "normalizedVersion": "1.5", "executable": true, "persistence": true }
     },
     {
       "name": "opaque executable version", "mutations": [{ "path": ["schemaVersion"], "value": "recorder-next" }],
@@ -69,6 +83,10 @@
     },
     {
       "name": "group assertion mixed with an element target", "mutations": [{ "path": ["steps", 2, "target"], "value": { "selector": ".profile" } }],
+      "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
+    },
+    {
+      "name": "page assertion mixed with an element target", "mutations": [{ "path": ["steps", 3, "target"], "value": { "selector": "body" } }],
       "expected": { "canonical": false, "compatible": false, "normalizedVersion": null, "executable": false, "persistence": false }
     },
     {

@@ -71,6 +71,28 @@ describe("executable workflow contract", () => {
     expect(WorkflowSchema.parse({ ...workflow, schemaVersion: "1.2" }).schemaVersion).toBe("1.2");
   });
 
+  it("accepts targetless page-text assertions while keeping schema versions opaque", () => {
+    const {
+      target: _target,
+      payload: _payload,
+      position: _position,
+      waitAfter: _waitAfter,
+      ...base
+    } = clickStep();
+    const assertion = {
+      ...base,
+      type: "assertion" as const,
+      expectation: { kind: "page_text_contains" as const, expected: "John Snow" },
+    };
+    const workflow = { ...workflowWith([assertion]), schemaVersion: "future-recorder-version" };
+
+    expect(WorkflowSchema.parse(workflow)).toEqual(workflow);
+    expect(() => WorkflowSchema.parse({
+      ...workflow,
+      steps: [{ ...assertion, target: { selector: "body" } }],
+    })).toThrow();
+  });
+
   it("rejects blank, oversized, and action-only fields on assertions", () => {
     const assertion = {
       ...clickStep(),

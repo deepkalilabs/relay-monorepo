@@ -47,6 +47,10 @@ Assertion steps are evaluated once after the preceding action has settled.
 case-insensitive, whitespace-normalized containment to the target's visible text.
 `group_exists` scans a bounded set of visible structural candidates and applies the
 shared contract's repeated-group similarity rules without exposing captured text.
+`page_text_contains` snapshots the main frame and attached nested frames, skips hidden
+frame trees, and passes when one visible frame contains the normalized phrase. It does
+not combine partial phrases across frames, and observed page text never enters events,
+results, or diagnostics.
 Assertions emit the `asserting` phase, do not settle afterward, and return only fixed
 privacy-safe failure diagnostics.
 

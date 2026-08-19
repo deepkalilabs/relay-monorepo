@@ -86,14 +86,14 @@ describe("workflow contract", () => {
     expect(step.metadata.sensitive).toBe(true);
   });
 
-  it("creates and serializes a version 1.4 draft with lifecycle metadata", () => {
+  it("creates and serializes a version 1.5 draft with lifecycle metadata", () => {
     const workflow = createWorkflow("session-1");
     expect(WorkflowSchema.parse(workflow)).toMatchObject({
-      schemaVersion: "1.4",
+      schemaVersion: "1.5",
       status: "draft",
       revision: 1,
     });
-    expect(serializeWorkflow(workflow)).toContain('"schemaVersion": "1.4"');
+    expect(serializeWorkflow(workflow)).toContain('"schemaVersion": "1.5"');
     expect(workflowFilename(new Date("2026-07-21T12:34:56.000Z"))).toBe("browser-memory-workflow-2026-07-21T12-34-56-000Z.json");
   });
 

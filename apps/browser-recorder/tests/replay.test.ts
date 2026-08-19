@@ -45,8 +45,11 @@ function replayPage(click = vi.fn(async () => undefined)) {
     uncheck: vi.fn(async () => undefined),
   } as unknown as Locator;
   const frame = {
+    childFrames: vi.fn(() => []),
+    evaluate: vi.fn(async () => false),
     getByRole: vi.fn(() => locator),
     getByTestId: vi.fn(() => locator),
+    isDetached: vi.fn(() => false),
   } as unknown as Frame;
   const page = {
     frames: vi.fn(() => [frame]),
@@ -314,6 +317,56 @@ describe("replay engine", () => {
     expect(locator.count).toHaveBeenCalledTimes(2);
     expect(locator.innerText).toHaveBeenCalledTimes(2);
     expect(messages).toContainEqual(expect.objectContaining({ type: "replay.step", stepId: step.id, status: "passed" }));
+  });
+
+  it("reports privacy-safe page-text diagnostics and retries with a fresh scan", async () => {
+    const base = baseStep("assertion", 0);
+    const step: WorkflowStep = {
+      id: base.id,
+      order: base.order,
+      name: base.name,
+      enabled: base.enabled,
+      page: base.page,
+      metadata: base.metadata,
+      type: "assertion",
+      expectation: { kind: "page_text_contains", expected: "John Snow" },
+    };
+    const messages: ServerMessage[] = [];
+    const { page } = replayPage();
+    const frame = page.mainFrame();
+    vi.mocked(frame.evaluate)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const engine = new ReplayEngine(
+      crypto.randomUUID(),
+      page,
+      preflightReplay(workflowWith([step])),
+      (message) => messages.push(message),
+    );
+
+    const running = engine.run();
+    await vi.waitFor(() => expect(messages.some((message) =>
+      message.type === "replay.step" && message.status === "failed",
+    )).toBe(true));
+    const failed = messages.find((message) => message.type === "replay.step" && message.status === "failed");
+    expect(failed).toMatchObject({
+      diagnostic: {
+        message: 'Page text did not contain "John Snow".',
+        attemptedLocators: [],
+      },
+    });
+
+    engine.retry();
+    await running;
+
+    expect(frame.evaluate).toHaveBeenCalledTimes(2);
+    expect(messages).toContainEqual(expect.objectContaining({
+      type: "replay.step",
+      stepId: step.id,
+      status: "passed",
+      locatorKind: "page-text",
+    }));
+    expect(JSON.stringify(messages)).not.toContain("private observed page content");
   });
   it("skips a legacy option click and replays the following semantic select", async () => {
     const [click, select] = nativeSelectPair();
