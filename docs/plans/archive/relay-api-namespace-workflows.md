@@ -170,10 +170,10 @@ uv run ruff check src tests migrations
 uv run ruff format --check src tests
 uv run pytest
 uv run python -m openapi_spec_validator openapi.yaml
-npm run typecheck --prefix packages/automation-service-browserbase
-npm test --prefix packages/automation-service-browserbase
-npm run build --prefix packages/automation-service-browserbase
-uv run python -m openapi_spec_validator packages/automation-service-browserbase/openapi.yaml
+npm run typecheck --prefix apps/automation-service-browserbase
+npm test --prefix apps/automation-service-browserbase
+npm run build --prefix apps/automation-service-browserbase
+uv run python -m openapi_spec_validator apps/automation-service-browserbase/openapi.yaml
 ```
 
 ## Boundaries

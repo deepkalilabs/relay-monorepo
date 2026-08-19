@@ -1,16 +1,16 @@
 # Relay monorepo agent guide
 
 This file is the repository-wide authority for Git safety, architectural review,
-project routing, and verification. The repository is being normalized in the
-merge-gated sequence recorded by
-[`frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md).
-Until those moves land, treat the current paths below as the ownership boundaries.
+project routing, and verification. The repository layout is governed by
+[`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md).
 
 ## Read before changing files
 
-- Recorder work under `frontend/`: read [`frontend/AGENTS.md`](frontend/AGENTS.md).
-- API or backend-owned automation work under `backend/`: read
-  [`backend/AGENTS.md`](backend/AGENTS.md).
+- Recorder work under `apps/browser-recorder/`: read [`apps/browser-recorder/AGENTS.md`](apps/browser-recorder/AGENTS.md).
+- API work under `apps/relay-api/`: read
+  [`apps/relay-api/AGENTS.md`](apps/relay-api/AGENTS.md).
+- Browserbase execution-service work under `apps/automation-service-browserbase/`: read
+  [`apps/automation-service-browserbase/AGENTS.md`](apps/automation-service-browserbase/AGENTS.md).
 - Shared root workspace or repository tooling work: follow this guide and also read
   every nested guide whose project is affected.
 
@@ -19,15 +19,17 @@ the repository-wide policy in this file.
 
 ## Repository boundaries
 
-- Keep recorder code, tests, documentation, and deployment files in `frontend/` until
-  the approved application move.
-- Keep API dependency management, migrations, contracts, automation packages,
-  documentation, and deployment files in `backend/` until their approved moves.
+- Keep recorder code, tests, documentation, and deployment files in
+  `apps/browser-recorder/`.
+- Keep API dependency management, migrations, contracts, documentation, and deployment
+  files in `apps/relay-api/`.
+- Keep the Browserbase execution service in `apps/automation-service-browserbase/` and
+  shared libraries in their owning root `packages/` directories.
 - Keep repository-wide agent configuration, hooks, orchestration, and code-intelligence
   support under `.codex/`, `.githooks/`, `.ralphex/`, and `tooling/` at the root.
 - Use the root Node workspace for cross-project orchestration. Retain project lockfiles
   and project-local deployment commands until the lockfile-consolidation PR.
-- Do not extract or consolidate backend automation libraries as part of unrelated work.
+- Do not merge application and shared-package ownership as part of unrelated work.
 - Keep accepted architectural decisions in their current owning decision directory
   until an approved move. Never edit or discard an accepted ADR; supersede it.
 - Do not introduce application behavior, public API, OpenAPI, package export, CLI,
@@ -62,8 +64,8 @@ directory and record every added ADR before push:
 
 ```sh
 npm run adr:review -- \
-  --adr frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md \
-  --reason "Records the reviewed repository ownership and layout decision."
+  --adr apps/browser-recorder/docs/decisions/0025-example-decision.md \
+  --reason "Records the reviewed architectural decision."
 ```
 
 For a routine branch with no architectural decision:
@@ -80,9 +82,11 @@ review. Install the tracked hook after cloning with `npm run hooks:install`.
 
 - Root tooling: `npm run test:tooling` plus the affected root command.
 - Root Node workspace: `npm run typecheck` and the affected root test command.
-- Recorder: run `npm run test:changed` from `frontend/`; if Vitest finds no affected
-  tests, report that result instead of substituting the full suite.
-- Backend API and backend-owned automation: run the checks in `backend/AGENTS.md`.
+- Recorder: run `npm run test:changed` from `apps/browser-recorder/`; if Vitest finds no
+  affected tests, report that result instead of substituting the full suite.
+- Automation service: run the checks in
+  `apps/automation-service-browserbase/AGENTS.md`.
+- API and API-owned integration checks: run the checks in `apps/relay-api/AGENTS.md`.
 - Cross-project work: run every applicable project check.
 
 Use the narrow checks during development and the complete checks required by the active

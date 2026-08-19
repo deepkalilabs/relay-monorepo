@@ -8,19 +8,20 @@ their current Node projects without changing application or deployment ownership
 
 | Project | Purpose | Documentation |
 | --- | --- | --- |
-| [`frontend/`](frontend/) | Next.js application, local BFF, recorder WebSocket, and interactive replay | [`frontend/README.md`](frontend/README.md) |
-| [`backend/`](backend/) | FastAPI persistence API and the existing Browserbase automation packages | [`backend/README.md`](backend/README.md) |
+| [`apps/browser-recorder/`](apps/browser-recorder/) | Next.js application, local BFF, recorder WebSocket, and interactive replay | [`apps/browser-recorder/README.md`](apps/browser-recorder/README.md) |
+| [`apps/relay-api/`](apps/relay-api/) | FastAPI persistence API and authenticated automation gateway | [`apps/relay-api/README.md`](apps/relay-api/README.md) |
+| [`apps/automation-service-browserbase/`](apps/automation-service-browserbase/) | Private Browserbase execution service | [`apps/automation-service-browserbase/README.md`](apps/automation-service-browserbase/README.md) |
 
 The root Node workspace provides cross-project build and verification commands. Use it
 for Node commands in a full repository checkout. During the incremental migration,
 project lockfiles remain available to deployment contexts that receive only their
-owning project directory. Python remains independently managed under `backend/`.
+owning project directory. Python remains independently managed under `apps/relay-api/`.
 
 The shared replay input contract lives in
 [`packages/workflow-contract/`](packages/workflow-contract/), and provider-neutral
 Playwright phases live in [`packages/replay-core/`](packages/replay-core/). Both are
 consumed through the root workspace. Automation-core delegates execution to replay-core
-while remaining physically owned by `backend/` during the incremental migration.
+from its root-owned package.
 
 Install and verify all current Node workspaces:
 
@@ -31,6 +32,13 @@ npm run typecheck
 npm run test:automation
 npm run test:changed
 npm run test:tooling
+```
+
+Build both deployment images from the repository root:
+
+```bash
+docker build -f apps/relay-api/Dockerfile -t relay-api .
+docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .
 ```
 
 ## Repository agent workflow
@@ -59,7 +67,7 @@ be used as durable project context.
 Start the frontend:
 
 ```bash
-cd frontend
+cd apps/browser-recorder
 npm install
 cp .env.example .env.local
 npm run dev
@@ -68,7 +76,7 @@ npm run dev
 Start the persistence API:
 
 ```bash
-cd backend
+cd apps/relay-api
 cp .env.example .env
 uv sync --extra dev
 docker compose up -d --wait postgres
@@ -76,30 +84,31 @@ uv run alembic upgrade head
 uv run uvicorn relay_backend.main:app --reload --no-access-log
 ```
 
-The backend's Browserbase automation libraries and service remain under
-[`backend/packages/`](backend/packages/). Automation-core preserves its fail-fast public
-facade and privacy-safe results while delegating provider-neutral behavior to the shared
-replay engine. The frontend keeps its interactive state machine and delegates the same
-provider-neutral phases to replay-core.
+The Browserbase automation libraries live under [`packages/`](packages/), and the
+deployable execution service lives under
+[`apps/automation-service-browserbase/`](apps/automation-service-browserbase/).
+Automation-core preserves its fail-fast public facade and privacy-safe results while
+delegating provider-neutral behavior to the shared replay engine. The frontend keeps
+its interactive state machine and delegates the same provider-neutral phases to
+replay-core.
 
-Build and deployment services must use `frontend/` or `backend/` as their working/root
-directory so each project's existing configuration and relative paths remain valid.
-The automation image is the exception: because it consumes a root package, build it
-from the repository root with `backend/Dockerfile.automation`.
+Local recorder and API commands use `apps/browser-recorder/` or `apps/relay-api/` as their
+working directory. Both Docker images now use the repository root as their build context
+so they can consume sibling packages and contracts.
 
 ## Repository decisions
 
 Application documentation remains within its owning directory, while repository-wide
 plans and agent workflows live under [`docs/`](docs/). The decision to adopt the current
 layout is recorded in
-[`frontend/docs/decisions/0019-use-a-multi-project-monorepo.md`](frontend/docs/decisions/0019-use-a-multi-project-monorepo.md).
+[`apps/browser-recorder/docs/decisions/0019-use-a-multi-project-monorepo.md`](apps/browser-recorder/docs/decisions/0019-use-a-multi-project-monorepo.md).
 The additive workspace migration is recorded in
-[`frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](frontend/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
+[`apps/browser-recorder/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](apps/browser-recorder/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
 The shared replay input and canonical schema `1.4` decision is recorded in
-[`frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](frontend/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
+[`apps/browser-recorder/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](apps/browser-recorder/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
 The shared replay execution boundary is recorded in
-[`frontend/docs/decisions/0023-share-replay-execution-primitives.md`](frontend/docs/decisions/0023-share-replay-execution-primitives.md).
+[`apps/browser-recorder/docs/decisions/0023-share-replay-execution-primitives.md`](apps/browser-recorder/docs/decisions/0023-share-replay-execution-primitives.md).
 The approved three-increment repository and agent-tooling normalization is recorded in
-[`frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
+[`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
 and tracked by
 [`docs/plans/active/relay-monorepo-refactor.md`](docs/plans/active/relay-monorepo-refactor.md).

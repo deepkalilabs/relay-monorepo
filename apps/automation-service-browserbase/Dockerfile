@@ -1,0 +1,69 @@
+FROM node:24-slim AS manifests
+
+WORKDIR /app
+
+COPY packages/workflow-contract/package.json packages/workflow-contract/package-lock.json packages/workflow-contract/
+COPY packages/replay-core/package.json packages/replay-core/package-lock.json packages/replay-core/
+COPY packages/automation-core/package.json packages/automation-core/package-lock.json packages/automation-core/
+COPY packages/automation-worker-browserbase/package.json packages/automation-worker-browserbase/package-lock.json packages/automation-worker-browserbase/
+COPY apps/automation-service-browserbase/package.json apps/automation-service-browserbase/package-lock.json apps/automation-service-browserbase/
+
+FROM manifests AS build
+
+RUN npm ci --prefix packages/workflow-contract \
+ && npm ci --prefix packages/replay-core \
+ && npm ci --prefix packages/automation-core \
+ && npm ci --prefix packages/automation-worker-browserbase \
+ && npm ci --prefix apps/automation-service-browserbase
+
+COPY packages/workflow-contract/ packages/workflow-contract/
+COPY packages/replay-core/ packages/replay-core/
+COPY packages/automation-core/ packages/automation-core/
+COPY packages/automation-worker-browserbase/ packages/automation-worker-browserbase/
+COPY apps/automation-service-browserbase/ apps/automation-service-browserbase/
+
+RUN npm run build --prefix packages/workflow-contract \
+ && npm run build --prefix packages/replay-core \
+ && npm run build --prefix packages/automation-core \
+ && npm run build --prefix packages/automation-worker-browserbase \
+ && npm run build --prefix apps/automation-service-browserbase
+
+FROM manifests AS production-dependencies
+
+ENV NODE_ENV=production
+
+RUN npm ci --omit=dev --prefix packages/workflow-contract \
+ && npm ci --omit=dev --prefix packages/replay-core \
+ && npm ci --omit=dev --prefix packages/automation-core \
+ && npm ci --omit=dev --prefix packages/automation-worker-browserbase \
+ && npm ci --omit=dev --prefix apps/automation-service-browserbase
+
+FROM node:24-slim AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV AUTOMATION_HOST=0.0.0.0
+ENV AUTOMATION_SCREENSHOTS=false
+
+COPY --from=production-dependencies /app/packages/workflow-contract/package.json packages/workflow-contract/package.json
+COPY --from=production-dependencies /app/packages/workflow-contract/node_modules/ packages/workflow-contract/node_modules/
+COPY --from=production-dependencies /app/packages/replay-core/package.json packages/replay-core/package.json
+COPY --from=production-dependencies /app/packages/replay-core/node_modules/ packages/replay-core/node_modules/
+COPY --from=production-dependencies /app/packages/automation-core/package.json packages/automation-core/package.json
+COPY --from=production-dependencies /app/packages/automation-core/node_modules/ packages/automation-core/node_modules/
+COPY --from=production-dependencies /app/packages/automation-worker-browserbase/package.json packages/automation-worker-browserbase/package.json
+COPY --from=production-dependencies /app/packages/automation-worker-browserbase/node_modules/ packages/automation-worker-browserbase/node_modules/
+COPY --from=production-dependencies /app/apps/automation-service-browserbase/package.json apps/automation-service-browserbase/package.json
+COPY --from=production-dependencies /app/apps/automation-service-browserbase/node_modules/ apps/automation-service-browserbase/node_modules/
+
+COPY --from=build /app/packages/workflow-contract/dist/ packages/workflow-contract/dist/
+COPY --from=build /app/packages/replay-core/dist/ packages/replay-core/dist/
+COPY --from=build /app/packages/automation-core/dist/ packages/automation-core/dist/
+COPY --from=build /app/packages/automation-worker-browserbase/dist/ packages/automation-worker-browserbase/dist/
+COPY --from=build /app/apps/automation-service-browserbase/dist/ apps/automation-service-browserbase/dist/
+
+EXPOSE 8080
+
+CMD ["node", "apps/automation-service-browserbase/dist/main.js"]

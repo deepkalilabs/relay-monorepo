@@ -33,8 +33,8 @@ git push
 tooling/repository/         Review creation and deterministic validation
 tooling/tests/              Temporary-repository integration tests
 docs/decisions/             Root-owned accepted ADRs
-frontend/docs/decisions/    Recorder and transitional repository ADRs
-backend/docs/decisions/     API-owned accepted ADRs
+apps/browser-recorder/docs/decisions/    Recorder and transitional repository ADRs
+apps/relay-api/docs/decisions/     API-owned accepted ADRs
 AGENTS.md                   Agent authorization and review policy
 ```
 

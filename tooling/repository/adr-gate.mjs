@@ -18,6 +18,8 @@ const ADR_DIRECTORIES = [
   "docs/decisions",
   "frontend/docs/decisions",
   "backend/docs/decisions",
+  "apps/browser-recorder/docs/decisions",
+  "apps/relay-api/docs/decisions",
 ];
 
 function git(args, options = {}) {
@@ -44,6 +46,7 @@ function repoRoot() {
 }
 
 function adrDirectoryForPath(path) {
+  if (!path) return undefined;
   return ADR_DIRECTORIES.find((directory) =>
     path.startsWith(`${directory}/`),
   );
@@ -74,8 +77,17 @@ function exactCommit(input) {
 function parseNameStatus(buffer) {
   const fields = buffer.toString("utf8").split("\0");
   const entries = [];
-  for (let index = 0; index < fields.length - 1; index += 2) {
-    entries.push({ status: fields[index], path: fields[index + 1] });
+  for (let index = 0; index < fields.length - 1; ) {
+    const status = fields[index++];
+    if (status.startsWith("R") || status.startsWith("C")) {
+      entries.push({
+        status,
+        sourcePath: fields[index++],
+        path: fields[index++],
+      });
+    } else {
+      entries.push({ status, path: fields[index++] });
+    }
   }
   return entries;
 }
@@ -139,7 +151,7 @@ function diffEntries(fromOid, toOid, paths = []) {
       [
         "diff",
         "--name-status",
-        "--no-renames",
+        "--find-renames=100%",
         "-z",
         fromOid,
         toOid,
@@ -180,19 +192,33 @@ function immutableAdrError(paths) {
 
 function assertAcceptedAdrsUnchanged(state) {
   const changed = state.entries
-    .filter(
-      (entry) =>
-        adrDirectoryForPath(entry.path) && entry.status !== "A",
-    )
-    .map((entry) => entry.path);
+    .filter((entry) => {
+      if (entry.status === "A") return false;
+      if (entry.status === "R100") {
+        const sourceDirectory = adrDirectoryForPath(entry.sourcePath);
+        if (!sourceDirectory) return false;
+        return !adrDirectoryForPath(entry.path);
+      }
+      return (
+        adrDirectoryForPath(entry.sourcePath) ||
+        adrDirectoryForPath(entry.path)
+      );
+    })
+    .map((entry) => entry.sourcePath ?? entry.path);
   if (changed.length > 0) throw immutableAdrError(changed);
 }
 
 function assertRemoteAdrsPreserved(remoteOid, localOid) {
   if (remoteOid === ZERO_OID) return;
   const changed = diffEntries(remoteOid, localOid, ADR_DIRECTORIES)
-    .filter((entry) => entry.status !== "A")
-    .map((entry) => entry.path);
+    .filter((entry) => {
+      if (entry.status === "A") return false;
+      if (entry.status !== "R100") return true;
+      const sourceDirectory = adrDirectoryForPath(entry.sourcePath);
+      if (!sourceDirectory) return false;
+      return !adrDirectoryForPath(entry.path);
+    })
+    .map((entry) => entry.sourcePath ?? entry.path);
   if (changed.length > 0) throw immutableAdrError(changed);
 }
 
@@ -200,7 +226,10 @@ function addedAdrPaths(state) {
   return state.entries
     .filter(
       (entry) =>
-        entry.status === "A" && adrDirectoryForPath(entry.path),
+        adrDirectoryForPath(entry.path) &&
+        (entry.status === "A" ||
+          (entry.status === "R100" &&
+            !adrDirectoryForPath(entry.sourcePath))),
     )
     .map((entry) => {
       const directory = adrDirectoryForPath(entry.path);

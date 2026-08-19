@@ -1,8 +1,8 @@
 # Repository documentation
 
 Repository-wide planning and agent-workflow documents live here. Application-specific
-product, API, deployment, and decision documents remain with their owning application
-until the approved layout moves them.
+product, API, deployment, and decision documents live with their owning application
+under `apps/`.
 
 ## Planning lifecycle
 

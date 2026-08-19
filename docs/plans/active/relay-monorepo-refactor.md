@@ -1,7 +1,7 @@
 # Relay Monorepo Refactor
 
 - Status: Approved
-- Decision: `frontend/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`
+- Decision: `apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`
 - Delivery: Three merge-gated pull requests
 - Behavior change: None from the structural refactor
 
@@ -13,7 +13,7 @@ changing Relay runtime behavior or public interfaces.
 ## Pull request 1: Agent and repository foundation
 
 - Move repository-wide Codex, Ralphex, Git-hook, ADR-gate, plan, and code-intelligence
-  ownership out of `frontend/`.
+  ownership out of `apps/browser-recorder/`.
 - Make root `AGENTS.md` the shared policy and routing source.
 - Remove tracked runtime task state and classify existing plans and handoffs.
 - Add focused root tooling tests and commands.
