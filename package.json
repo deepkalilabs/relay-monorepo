@@ -35,8 +35,6 @@
     "adr:review": "node tooling/repository/adr-gate.mjs review",
     "build": "npm run build --workspace @relay/workflow-contract && npm run build --workspace @relay/replay-core && npm run build --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm run build --workspace browser-memory-recorder",
     "hooks:install": "node tooling/repository/adr-gate.mjs install",
-    "ralph:plan": "node tooling/ralph/ralph-loop.mjs plan",
-    "ralph:run": "node tooling/ralph/ralph-loop.mjs run",
     "test:automation": "npm run test:contract && npm test --workspace @relay/replay-core && npm run build --workspace @relay/replay-core && npm run build --workspace @relay/automation-core && npm test --workspace @relay/automation-core && npm run build --workspace @relay/automation-worker-browserbase && npm test --workspace @relay/automation-worker-browserbase && npm run build --workspace @relay/automation-service-browserbase && npm test --workspace @relay/automation-service-browserbase",
     "test:contract": "npm run schema:check --workspace @relay/workflow-contract && npm test --workspace @relay/workflow-contract",
     "test:changed": "npm run test:changed --workspace browser-memory-recorder",

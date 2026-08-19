@@ -63,6 +63,6 @@ Run `npm run test:tooling` for repository-tooling verification.
 - Always fail closed when pushed branch identity changes.
 - Never infer push authorization or allow `--no-verify`.
 - Never store markers in tracked files.
-- Ralphex can create task commits without a review marker.
+- Local commits do not require a review marker; publication through a branch push does.
 - Unreviewed and stale branch pushes fail; exact reviewed pushes pass.
 - The installer enables only the tracked pre-push gate.

@@ -1,9 +1,0 @@
-[project]
-name = "browser-replay-agent"
-version = "0.1.0"
-requires-python = ">=3.13"
-dependencies = [
-    "ast-grep-cli>=0.45.0",
-    "ast-grep-py>=0.45.0",
-    "serena-agent>=1.6.1",
-]

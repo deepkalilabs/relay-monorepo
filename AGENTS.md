@@ -25,8 +25,8 @@ the repository-wide policy in this file.
   files in `apps/relay-api/`.
 - Keep the Browserbase execution service in `apps/automation-service-browserbase/` and
   shared libraries in their owning root `packages/` directories.
-- Keep repository-wide agent configuration, hooks, orchestration, and code-intelligence
-  support under `.codex/`, `.githooks/`, `.ralphex/`, and `tooling/` at the root.
+- Keep repository-wide agent configuration, hooks, and repository tooling under
+  `.codex/`, `.githooks/`, and `tooling/` at the root.
 - Run Node installation only from the repository root with `npm ci`. The root
   `package-lock.json` is the only Node lockfile; use workspace commands instead of
   adding project-local lockfiles or install flows.
@@ -41,11 +41,6 @@ the repository-wide policy in this file.
 - Do not commit, push, rewrite history, merge, or create a pull request unless the user
   explicitly authorizes that action. Authorization for one action does not imply
   authorization for a different action.
-- Autonomous-plan authorization covers only task-scoped commits in its isolated branch
-  or worktree. `npm run ralph:run -- docs/plans/<path>.md` additionally authorizes that
-  process to make non-force pushes only to its exact generated `codex/<slug>` branch.
-  It never authorizes merging, rebasing, squashing, amending, force-pushing, or opening
-  a pull request.
 - Never bypass Git hooks with `--no-verify` or an equivalent mechanism.
 - Before every authorized non-deletion branch push, inspect the complete committed
   branch diff and record the result with the root `npm run adr:review` command.

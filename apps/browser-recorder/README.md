@@ -225,9 +225,8 @@ Run these scripts from `apps/browser-recorder/` after the root install, or appen
 | `npm run test:e2e` | Run local Playwright end-to-end tests |
 | `npm run test:browserbase` | Run the paid Browserbase smoke test |
 
-Repository-wide agent commands, hooks, and the supervised Ralph loop run from the
-repository root. See [`../../docs/README.md`](../../docs/README.md) and the root
-[`README.md`](../../README.md).
+Repository-wide agent commands and hooks run from the repository root. See
+[`../../docs/README.md`](../../docs/README.md) and the root [`README.md`](../../README.md).
 
 ## Security and session lifecycle
 

@@ -12,8 +12,8 @@ changing Relay runtime behavior or public interfaces.
 
 ## Pull request 1: Agent and repository foundation
 
-- Move repository-wide Codex, Ralphex, Git-hook, ADR-gate, plan, and code-intelligence
-  ownership out of `apps/browser-recorder/`.
+- Move repository-wide Codex, Git-hook, ADR-gate, and plan ownership out of
+  `apps/browser-recorder/`.
 - Make root `AGENTS.md` the shared policy and routing source.
 - Remove tracked runtime task state and classify existing plans and handoffs.
 - Add focused root tooling tests and commands.
@@ -35,7 +35,7 @@ changing Relay runtime behavior or public interfaces.
 - Retain only the root Node lockfile.
 - Install and build Node deployments from the root workspace.
 - Add root verification commands and guard against nested Node lockfiles.
-- Preserve the API and agent-tooling `uv` environments.
+- Preserve the API `uv` environment.
 
 ## Delivery rules
 

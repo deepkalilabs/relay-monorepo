@@ -1,4 +1,0 @@
-[mcp_servers.ralph-code-intel]
-url = "http://127.0.0.1:8765/mcp"
-required = false
-default_tools_approval_mode = "auto"

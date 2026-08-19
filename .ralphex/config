@@ -1,6 +1,0 @@
-external_review_tool = none
-task_retry_count = 1
-finalize_enabled = false
-move_plan_on_completion = false
-session_timeout = 45m
-idle_timeout = 10m
