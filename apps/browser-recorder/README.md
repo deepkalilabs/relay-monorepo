@@ -10,7 +10,7 @@ Each step can be reviewed, renamed, reordered, disabled, or deleted before the w
 - Records browser activity as semantic actions rather than raw mouse coordinates.
 - Builds ordered locator candidates from roles, labels, text, CSS, and XPath.
 - Displays recorded actions immediately in an editable workflow timeline.
-- Adds manual assertions by selecting an element in the live browser.
+- Adds manual assertions by searching visible page text or selecting an element or repeated group in the live browser.
 - Creates durable drafts and saves one JSON file per workflow.
 - Lists locally saved drafts and completed workflows in the Library.
 - Creates, edits, and permanently deletes reusable local profiles backed by one JSON file each.
@@ -120,7 +120,7 @@ navigate · click · fill · select · check · uncheck · keypress · submit
 
 `ElementTarget` keeps multiple locator candidates, ordered from semantic selectors to CSS and XPath fallbacks, rather than coupling replay to one selector. Metadata records whether a step was recorded or manually added, and whether its value may be sensitive.
 
-Assertions are manually authored and remain outside the recorded-action contract. A live-session picker captures the selected element's locator evidence and page context without activating the website or recording the selection click. Replay evaluates the assertion once: `visible` requires one visible match, `text_contains` compares normalized element text, and `page_text_contains` searches each visible attached frame independently without exposing observed document text. Assertions do not define post-step waits.
+Assertions are manually authored and remain outside the recorded-action contract. During a connected live session, **Add assertion** offers either a targetless page-text form or the existing element/group picker. Both paths capture current page context without activating the website or recording a selection click. Replay evaluates the assertion once: `visible` requires one visible match, `text_contains` compares normalized element text, and `page_text_contains` searches each visible attached frame independently without exposing observed document text. Assertions do not define post-step waits.
 
 Action steps may also define an optional replay wait. A wait can add up to 30 seconds after an action and can require an element to remain visible or hidden before replay continues.
 

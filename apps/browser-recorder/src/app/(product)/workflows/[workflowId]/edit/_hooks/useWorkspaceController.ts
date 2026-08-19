@@ -26,6 +26,7 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
   const router = useRouter();
   const [workflowState, dispatch] = useReducer(workflowReducer, undefined, initialWorkflowState);
   const workflowStateRef = useRef(workflowState);
+  const [addAssertionOpen, setAddAssertionOpen] = useState(false);
   const [runDialogOpen, setRunDialogOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -81,6 +82,7 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
   const assertionSelection = session.assertionPick?.status === "selected" ? session.assertionPick : null;
   const assertionAvailable = Boolean(
     session.liveViewUrl
+    && session.browserPage
     && session.transportStatus === "connected"
     && ["recording", "reconnecting"].includes(session.displayStatus)
     && !captchaLocked
@@ -90,7 +92,7 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
   const workflowLocked = replayLocked || captchaLocked || persistenceLocked || assertionPicking;
   const panels = useWorkspacePanels({
     selectedStepId: workflowState.selectedStepId,
-    overlayOpen: Boolean(confirmation || runDialogOpen || assertionSelection),
+    overlayOpen: Boolean(addAssertionOpen || confirmation || runDialogOpen || assertionSelection),
   });
 
   const loadSavedWorkflow = useCallback(async () => {
@@ -140,6 +142,7 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
   useEffect(() => {
     if (!captchaLocked) return;
     const timeout = window.setTimeout(() => {
+      setAddAssertionOpen(false);
       setRunDialogOpen(false);
       setConfirmation(null);
       setPendingReplayStartId(undefined);
@@ -152,10 +155,17 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
     return () => window.clearTimeout(timeout);
   }, [captchaLocked]);
 
+  useEffect(() => {
+    if (assertionAvailable) return;
+    const timeout = window.setTimeout(() => setAddAssertionOpen(false), 0);
+    return () => window.clearTimeout(timeout);
+  }, [assertionAvailable]);
+
   const beginRecording = () => session.startRecording();
 
   const beginAssertionPick = () => {
     if (!assertionAvailable) return;
+    setAddAssertionOpen(false);
     const requestId = crypto.randomUUID();
     if (!session.startAssertionPick(requestId)) {
       setAnnouncement("The assertion picker could not start.");
@@ -533,7 +543,11 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
     },
     dialogs: {
       actions: {
-        addAssertion: beginAssertionPick,
+        addAssertion: () => {
+          if (assertionAvailable) setAddAssertionOpen(true);
+        },
+        chooseAssertionTarget: beginAssertionPick,
+        closeAddAssertion: () => setAddAssertionOpen(false),
         closeAssertion: closeAssertionPick,
         closeConfirmation: () => setConfirmation(null),
         closeRun: closeRunDialog,
@@ -544,7 +558,9 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
         },
       },
       model: {
+        addAssertionOpen,
         assertionAvailable,
+        assertionPage: session.browserPage,
         assertionPicking,
         assertionSelection,
         blockedReason: replayBlockedReason,

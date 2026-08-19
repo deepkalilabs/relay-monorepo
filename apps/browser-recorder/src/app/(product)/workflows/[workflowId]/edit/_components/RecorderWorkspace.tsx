@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowRight, ChevronLeft, Play, RotateCcw, X } from "luci
 import { BrowserPanel } from "@/features/browser";
 import { RecorderControls } from "@/features/recorder";
 import { ReplayControls, ReplayFailurePanel, RunWorkflowDialog } from "@/features/replay";
-import { AssertionStepDialog, StepEditor, WorkflowTimeline } from "@/features/workflow-editor";
+import { AddAssertionDialog, AssertionStepDialog, StepEditor, WorkflowTimeline } from "@/features/workflow-editor";
 import { Modal } from "@/shared/ui/modal";
 import { WorkspaceNavbar } from "./WorkspaceNavbar";
 import { useWorkspaceController } from "../_hooks/useWorkspaceController";
@@ -292,6 +292,14 @@ export function RecorderWorkspace({ workflowId, profileId, autoRun }: RecorderWo
         ) : null}
         <div className="sr-only" aria-live="polite">{layout.model.announcement}</div>
       </div>
+      <AddAssertionDialog
+        open={dialogs.model.addAssertionOpen}
+        order={workflowState.workflow.steps.length}
+        page={dialogs.model.assertionPage}
+        onClose={dialogs.actions.closeAddAssertion}
+        onPickTarget={dialogs.actions.chooseAssertionTarget}
+        onInsert={workflow.actions.insertStep}
+      />
       <AssertionStepDialog
         open={Boolean(dialogs.model.assertionSelection)}
         order={workflowState.workflow.steps.length}
