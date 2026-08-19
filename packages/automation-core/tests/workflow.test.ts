@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import conformance from "../../../../packages/workflow-contract/fixtures/conformance.json" with { type: "json" };
+import conformance from "../../workflow-contract/fixtures/conformance.json" with { type: "json" };
 import { WorkflowSchema } from "../src/index.js";
 import { locatorCandidatesForTarget, orderLocatorCandidates } from "../src/workflow.js";
 import { clickStep, workflowWith } from "./fixtures.js";

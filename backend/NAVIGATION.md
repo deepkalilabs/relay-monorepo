@@ -47,10 +47,10 @@ liveness and readiness checks.
 The service does not record browser activity or execute workflows in-process. It persists
 and retrieves canonical documents and gateways selected documents to the private run
 service. The repository also contains the
-separate [`@relay/automation-core`](packages/automation-core/README.md) TypeScript
+separate [`@relay/automation-core`](../packages/automation-core/README.md) TypeScript
 library for background execution. That library neither calls the service nor owns
 persistence or browser lifecycle. The separate
-[`@relay/automation-worker-browserbase`](packages/automation-worker-browserbase/README.md)
+[`@relay/automation-worker-browserbase`](../packages/automation-worker-browserbase/README.md)
 package is its Browserbase-specific server consumer.
 The separate
 [`@relay/automation-service-browserbase`](packages/automation-service-browserbase/README.md)
@@ -88,9 +88,9 @@ For a first pass through the code, read:
 8. [`src/relay_backend/document_store.py`](src/relay_backend/document_store.py) for
    bounded deterministic object serialization and S3 transport.
 9. [`tests/`](tests/) for contract, failure, concurrency, and privacy examples.
-10. [`packages/automation-core/README.md`](packages/automation-core/README.md) for the
+10. [`packages/automation-core/README.md`](../packages/automation-core/README.md) for the
    independent background-automation boundary and public TypeScript API.
-11. [`packages/automation-worker-browserbase/README.md`](packages/automation-worker-browserbase/README.md)
+11. [`packages/automation-worker-browserbase/README.md`](../packages/automation-worker-browserbase/README.md)
     for Browserbase run configuration, CLI usage, and provider lifecycle.
 12. [`packages/automation-service-browserbase/README.md`](packages/automation-service-browserbase/README.md)
     for the streaming and in-memory batch HTTP contract, configuration, and operations.
@@ -443,16 +443,16 @@ are package markers and contain no runtime behavior.
 | [`tests/test_api.py`](tests/test_api.py) | Proves authentication, routes, errors, limits, and served-contract behavior. |
 | [`tests/conftest.py`](tests/conftest.py) | Applies migrations once and cleans workflow, idempotency, and non-default namespace test data. |
 | [`docs/decisions/`](docs/decisions/) | Preserves the rationale and consequences of accepted architecture/security decisions. |
-| [`packages/automation-core/src/workflow.ts`](packages/automation-core/src/workflow.ts) | Preserves automation-core's workflow exports while delegating executable validation, opaque schema-version metadata, assertions, and locator ordering to the root shared contract. |
-| [`packages/automation-core/src/preflight.ts`](packages/automation-core/src/preflight.ts) | Validates runner inputs, start selection, enabled ranges, and bootstrap URL choice. |
-| [`packages/automation-core/src/target-resolution.ts`](packages/automation-core/src/target-resolution.ts) | Owns frame selection, locator construction, uniqueness and visibility checks, and recorded element fingerprint validation. |
-| [`packages/automation-core/src/step-actions.ts`](packages/automation-core/src/step-actions.ts) | Owns canonical Playwright actions, combobox input fidelity, assertions, and recorded page-position restoration. |
-| [`packages/automation-core/src/execution.ts`](packages/automation-core/src/execution.ts) | Owns automatic settling, explicit waits, cancellation-aware step orchestration, and compatibility exports. |
-| [`packages/automation-core/src/execution-errors.ts`](packages/automation-core/src/execution-errors.ts) | Defines privacy-safe execution failures, phases, cancellation, and interruptible sleeping shared across execution modules. |
-| [`packages/automation-core/src/runner.ts`](packages/automation-core/src/runner.ts) | Runs steps sequentially and returns transport-neutral events and terminal results. |
-| [`packages/automation-core/tests/`](packages/automation-core/tests/) | Proves contract agreement, behavior parity, fail-fast execution, cancellation, and diagnostic privacy. |
-| [`packages/automation-worker-browserbase/src/`](packages/automation-worker-browserbase/src/) | Validates complete run inputs, resolves parameters, owns Browserbase lifecycle, and exposes the JSONL CLI. |
-| [`packages/automation-worker-browserbase/tests/`](packages/automation-worker-browserbase/tests/) | Proves worker lifecycle, cleanup, timeout, parameter, CLI, and privacy behavior without paid sessions by default. |
+| [`packages/automation-core/src/workflow.ts`](../packages/automation-core/src/workflow.ts) | Preserves automation-core's workflow exports while delegating executable validation, opaque schema-version metadata, assertions, and locator ordering to the root shared contract. |
+| [`packages/automation-core/src/preflight.ts`](../packages/automation-core/src/preflight.ts) | Validates runner inputs, start selection, enabled ranges, and bootstrap URL choice. |
+| [`packages/automation-core/src/target-resolution.ts`](../packages/automation-core/src/target-resolution.ts) | Owns frame selection, locator construction, uniqueness and visibility checks, and recorded element fingerprint validation. |
+| [`packages/automation-core/src/step-actions.ts`](../packages/automation-core/src/step-actions.ts) | Owns canonical Playwright actions, combobox input fidelity, assertions, and recorded page-position restoration. |
+| [`packages/automation-core/src/execution.ts`](../packages/automation-core/src/execution.ts) | Owns automatic settling, explicit waits, cancellation-aware step orchestration, and compatibility exports. |
+| [`packages/automation-core/src/execution-errors.ts`](../packages/automation-core/src/execution-errors.ts) | Defines privacy-safe execution failures, phases, cancellation, and interruptible sleeping shared across execution modules. |
+| [`packages/automation-core/src/runner.ts`](../packages/automation-core/src/runner.ts) | Runs steps sequentially and returns transport-neutral events and terminal results. |
+| [`packages/automation-core/tests/`](../packages/automation-core/tests/) | Proves contract agreement, behavior parity, fail-fast execution, cancellation, and diagnostic privacy. |
+| [`packages/automation-worker-browserbase/src/`](../packages/automation-worker-browserbase/src/) | Validates complete run inputs, resolves parameters, owns Browserbase lifecycle, and exposes the JSONL CLI. |
+| [`packages/automation-worker-browserbase/tests/`](../packages/automation-worker-browserbase/tests/) | Proves worker lifecycle, cleanup, timeout, parameter, CLI, and privacy behavior without paid sessions by default. |
 | [`packages/automation-service-browserbase/openapi.yaml`](packages/automation-service-browserbase/openapi.yaml) | Defines the independent direct-run, in-memory batch, polling, and health wire contract. |
 | [`packages/automation-service-browserbase/src/`](packages/automation-service-browserbase/src/) | Owns media validation, request limits, NDJSON and batch transport, shared local capacity, disconnect cancellation, and shutdown. |
 | [`packages/automation-service-browserbase/src/inngest.ts`](packages/automation-service-browserbase/src/inngest.ts) | Owns the opt-in local Inngest event validation, one-function registration, and safe terminal projection. |
@@ -476,8 +476,8 @@ are package markers and contain no runtime behavior.
 | Change request-size limits | [`request_limits.py`](src/relay_backend/request_limits.py) | `x-contract-semantics`, request-body docs, and boundary tests. |
 | Add configuration | [`settings.py`](src/relay_backend/settings.py) | [`.env.example`](.env.example), README configuration table, and tests. |
 | Change packaging or dependencies | [`pyproject.toml`](pyproject.toml) | `uv.lock`, contract packaging, and README requirements. |
-| Change background automation behavior | [`packages/automation-core/src/runner.ts`](packages/automation-core/src/runner.ts), [`step-actions.ts`](packages/automation-core/src/step-actions.ts), [`target-resolution.ts`](packages/automation-core/src/target-resolution.ts), and [`execution.ts`](packages/automation-core/src/execution.ts) | Package tests, public exports, package README, and ADR 0003 boundaries. |
-| Change Browserbase run lifecycle | [`packages/automation-worker-browserbase/src/worker.ts`](packages/automation-worker-browserbase/src/worker.ts) | Worker tests, CLI output, package README, and ADR 0004 boundaries. |
+| Change background automation behavior | [`packages/automation-core/src/runner.ts`](../packages/automation-core/src/runner.ts), [`step-actions.ts`](../packages/automation-core/src/step-actions.ts), [`target-resolution.ts`](../packages/automation-core/src/target-resolution.ts), and [`execution.ts`](../packages/automation-core/src/execution.ts) | Package tests, public exports, package README, and ADR 0003 boundaries. |
+| Change Browserbase run lifecycle | [`packages/automation-worker-browserbase/src/worker.ts`](../packages/automation-worker-browserbase/src/worker.ts) | Worker tests, CLI output, package README, and ADR 0004 boundaries. |
 | Change the Browserbase execution API | [`packages/automation-service-browserbase/openapi.yaml`](packages/automation-service-browserbase/openapi.yaml) | Service runtime, tests, README, and ADR 0005/0007/0008 boundaries. |
 | Change the local Inngest POC | [`packages/automation-service-browserbase/src/inngest.ts`](packages/automation-service-browserbase/src/inngest.ts) | Shared lifecycle tests, package README, POC design, and privacy assertions. |
 
@@ -561,10 +561,10 @@ are package markers and contain no runtime behavior.
   `src/` package layout, and force-includes `openapi.yaml` in built wheels.
 - [`uv.lock`](uv.lock) pins the resolved dependency graph and should change together
   with dependency declarations.
-- [`packages/automation-core/package-lock.json`](packages/automation-core/package-lock.json)
+- [`packages/automation-core/package-lock.json`](../packages/automation-core/package-lock.json)
   independently locks the TypeScript library and its root-owned shared-contract dependency
   for isolated automation image builds.
-- [`packages/automation-worker-browserbase/package-lock.json`](packages/automation-worker-browserbase/package-lock.json)
+- [`packages/automation-worker-browserbase/package-lock.json`](../packages/automation-worker-browserbase/package-lock.json)
   independently locks the Browserbase worker and its local automation-core dependency.
 - [`packages/automation-service-browserbase/package-lock.json`](packages/automation-service-browserbase/package-lock.json)
   independently locks Fastify and its local Browserbase worker dependency.

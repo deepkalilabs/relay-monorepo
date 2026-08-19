@@ -8,8 +8,8 @@
     "packages/workflow-contract",
     "packages/replay-core",
     "frontend",
-    "backend/packages/automation-core",
-    "backend/packages/automation-worker-browserbase",
+    "packages/automation-core",
+    "packages/automation-worker-browserbase",
     "backend/packages/automation-service-browserbase"
   ],
   "overrides": {

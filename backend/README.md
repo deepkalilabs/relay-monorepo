@@ -211,7 +211,7 @@ Controller → Service ───┤
   batch requests between the authenticated FastAPI boundary and the private execution
   service. Batch responses are bounded before the public response begins.
 
-[`packages/automation-core`](packages/automation-core/README.md) is an independent ESM
+[`packages/automation-core`](../packages/automation-core/README.md) is an independent ESM
 library. A background runner supplies an existing Playwright `Page`, receives
 transport-neutral events and structured results, and remains responsible for browser
 lifecycle and any persistence. It consumes the root `@relay/workflow-contract`
@@ -220,7 +220,7 @@ executable schema and delegates provider-neutral Playwright phases to the root
 privacy-safe background diagnostics. The package has no dependency on FastAPI,
 PostgreSQL, Browserbase, or the service's internal persistence model.
 
-[`packages/automation-worker-browserbase`](packages/automation-worker-browserbase/README.md)
+[`packages/automation-worker-browserbase`](../packages/automation-worker-browserbase/README.md)
 is the provider-specific server consumer. It validates complete workflows while treating
 the required `schemaVersion` value as opaque metadata,
 resolves explicit run parameters, owns fresh Browserbase session lifecycle, and returns
