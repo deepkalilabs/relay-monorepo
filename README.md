@@ -1,8 +1,9 @@
 # Relay
 
 Relay is a multi-project monorepo containing the Browser Memory Recorder frontend and
-the Relay persistence and automation backend. A private root npm workspace coordinates
-their current Node projects without changing application or deployment ownership.
+the Relay persistence and automation backend. A private root npm workspace and its
+single root lockfile coordinate every Node project without changing application or
+deployment ownership.
 
 ## Projects
 
@@ -12,10 +13,10 @@ their current Node projects without changing application or deployment ownership
 | [`apps/relay-api/`](apps/relay-api/) | FastAPI persistence API and authenticated automation gateway | [`apps/relay-api/README.md`](apps/relay-api/README.md) |
 | [`apps/automation-service-browserbase/`](apps/automation-service-browserbase/) | Private Browserbase execution service | [`apps/automation-service-browserbase/README.md`](apps/automation-service-browserbase/README.md) |
 
-The root Node workspace provides cross-project build and verification commands. Use it
-for Node commands in a full repository checkout. During the incremental migration,
-project lockfiles remain available to deployment contexts that receive only their
-owning project directory. Python remains independently managed under `apps/relay-api/`.
+The root Node workspace owns installation, locking, cross-project builds, and
+verification. Run `npm ci` only from the repository root; app and package directories
+do not own Node lockfiles. Python remains independently managed under
+`apps/relay-api/`.
 
 The shared replay input contract lives in
 [`packages/workflow-contract/`](packages/workflow-contract/), and provider-neutral
@@ -32,6 +33,7 @@ npm run typecheck
 npm run test:automation
 npm run test:changed
 npm run test:tooling
+npm run verify:locks
 ```
 
 Build both deployment images from the repository root:
@@ -40,6 +42,11 @@ Build both deployment images from the repository root:
 docker build -f apps/relay-api/Dockerfile -t relay-api .
 docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .
 ```
+
+Deploy the recorder with the repository root as the Railpack build context and set
+`RAILPACK_CONFIG_FILE=apps/browser-recorder/railpack.json`. That configuration installs
+once from the root lockfile, builds only the recorder and its shared prerequisites, and
+starts the recorder through its npm workspace.
 
 ## Repository agent workflow
 
@@ -67,10 +74,9 @@ be used as durable project context.
 Start the frontend:
 
 ```bash
-cd apps/browser-recorder
-npm install
-cp .env.example .env.local
-npm run dev
+npm ci
+cp apps/browser-recorder/.env.example apps/browser-recorder/.env.local
+npm run dev --workspace browser-memory-recorder
 ```
 
 Start the persistence API:
@@ -92,9 +98,27 @@ delegating provider-neutral behavior to the shared replay engine. The frontend k
 its interactive state machine and delegates the same provider-neutral phases to
 replay-core.
 
-Local recorder and API commands use `apps/browser-recorder/` or `apps/relay-api/` as their
-working directory. Both Docker images now use the repository root as their build context
-so they can consume sibling packages and contracts.
+Recorder scripts may run through its root workspace or from `apps/browser-recorder/`
+after the root install. API commands use `apps/relay-api/` as their working directory.
+Both Docker images use the repository root as their build context so they can consume
+sibling packages and contracts.
+
+## Contributing
+
+Read [`AGENTS.md`](AGENTS.md) and the nearest nested guide before changing a project.
+Keep the root `package-lock.json` as the only Node lockfile and use semver ranges for
+local `@relay/*` workspace dependencies. The fast project-specific commands remain
+available, while the complete repository gate runs from the root after PostgreSQL is
+ready:
+
+```bash
+docker compose -f apps/relay-api/compose.yaml up -d --wait postgres
+npm run verify:all
+```
+
+Use `npm run verify:recorder`, `npm run verify:api`, or
+`npm run verify:automation` for an owning-project gate, and `npm run verify:locks` to
+check root-only Node lockfile ownership.
 
 ## Repository decisions
 

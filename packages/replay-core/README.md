@@ -22,7 +22,7 @@ structured failures into frontend-owned diagnostics.
 
 ## Commands
 
-Run from the repository root after installing the workspace:
+Run from the repository root after installing the workspace once with `npm ci`:
 
 ```bash
 npm run build --workspace @relay/workflow-contract

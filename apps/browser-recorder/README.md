@@ -185,19 +185,33 @@ to be configured separately.
 
 ## Setup
 
+Install dependencies once from the repository root, then configure and start the
+recorder through its workspace:
+
 ```bash
-npm install
-cp .env.example .env.local
-npm run dev
+npm ci
+cp apps/browser-recorder/.env.example apps/browser-recorder/.env.local
+npm run dev --workspace browser-memory-recorder
 ```
 
-Add `BROWSERBASE_API_KEY` to `.env.local`, then open [http://127.0.0.1:3000](http://127.0.0.1:3000).
+Add `BROWSERBASE_API_KEY` to `apps/browser-recorder/.env.local`, then open
+[http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 For local development, `npm run dev` also loads an existing, gitignored `secret.txt` containing `BROWSERBASE_API_KEY=...`. This keeps the key out of tracked files and takes precedence over the empty `.env.local` template.
 
-`BROWSERBASE_PROJECT_ID` is optional because Browserbase can infer it from the key. The custom server serves both Next.js and `/ws`, so use `npm run dev` instead of `next dev`.
+`BROWSERBASE_PROJECT_ID` is optional because Browserbase can infer it from the key. The custom server serves both Next.js and `/ws`, so use the workspace `dev` script instead of `next dev`.
+
+### Railpack deployment
+
+Use the repository root as the build context and set
+`RAILPACK_CONFIG_FILE=apps/browser-recorder/railpack.json`. The tracked configuration
+uses the root lockfile, builds only `@relay/workflow-contract`, `@relay/replay-core`, and
+the recorder workspace, then starts the existing production server script.
 
 ## Commands
+
+Run these scripts from `apps/browser-recorder/` after the root install, or append
+`--workspace browser-memory-recorder` when running them from the repository root.
 
 | Command | Purpose |
 | --- | --- |

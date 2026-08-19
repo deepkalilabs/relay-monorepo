@@ -18,7 +18,8 @@ repository-wide tooling, and cross-project verification. Read it before this gui
 
 ## Verification
 
-During implementation and review, run from this directory:
+Install Node dependencies once from the repository root with `npm ci`. During
+implementation and review, run from this directory:
 
 ```sh
 npm run test:changed

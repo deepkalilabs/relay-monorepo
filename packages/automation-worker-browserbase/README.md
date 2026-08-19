@@ -7,19 +7,20 @@ state, retry actions, reuse recorded sessions, or manage authentication state.
 
 ## Commands
 
-Build the automation core before installing or running this local package dependency:
+Install once and build the worker dependency chain from the repository root:
 
 ```bash
-npm ci --prefix packages/automation-core
-npm run build --prefix packages/automation-core
-npm ci --prefix packages/automation-worker-browserbase
-npm run build --prefix packages/automation-worker-browserbase
+npm ci
+npm run build --workspace @relay/workflow-contract
+npm run build --workspace @relay/replay-core
+npm run build --workspace @relay/automation-core
+npm run build --workspace @relay/automation-worker-browserbase
 ```
 
 Validate a workflow without creating a paid Browserbase session:
 
 ```bash
-npm --prefix packages/automation-worker-browserbase run cli -- \
+npm run cli --workspace @relay/automation-worker-browserbase -- \
   validate --workflow /absolute/path/to/workflow.json
 ```
 
@@ -27,7 +28,7 @@ Run a workflow:
 
 ```bash
 export BROWSERBASE_API_KEY=replace-me
-npm --prefix packages/automation-worker-browserbase run cli -- \
+npm run cli --workspace @relay/automation-worker-browserbase -- \
   run --workflow /absolute/path/to/workflow.json
 ```
 
@@ -67,9 +68,9 @@ worker does not store or publish the image; that remains the caller's responsibi
 ## Verification
 
 ```bash
-npm run typecheck --prefix packages/automation-worker-browserbase
-npm test --prefix packages/automation-worker-browserbase
-npm run build --prefix packages/automation-worker-browserbase
+npm run typecheck --workspace @relay/automation-worker-browserbase
+npm test --workspace @relay/automation-worker-browserbase
+npm run build --workspace @relay/automation-worker-browserbase
 npm pack --dry-run ./packages/automation-worker-browserbase
 ```
 
@@ -78,5 +79,5 @@ session:
 
 ```bash
 BROWSERBASE_E2E=1 BROWSERBASE_API_KEY=replace-me \
-  npm run test:browserbase --prefix packages/automation-worker-browserbase
+  npm run test:browserbase --workspace @relay/automation-worker-browserbase
 ```
