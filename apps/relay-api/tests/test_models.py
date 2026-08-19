@@ -24,7 +24,7 @@ from relay_backend.models.workflows import (
 
 def workflow_document() -> dict:
     return {
-        "schemaVersion": "1.4",
+        "schemaVersion": "1.5",
         "id": "b4749f7e-4b22-43bf-8ef4-8ba5f79cb17b",
         "name": "  Checkout flow  ",
         "status": "draft",
@@ -95,7 +95,7 @@ def test_workflow_keeps_schema_1_2_documents_readable() -> None:
     assert workflow.schema_version == "1.2"
 
 
-def test_workflow_accepts_element_and_repeated_group_assertions() -> None:
+def test_workflow_accepts_element_group_and_page_text_assertions() -> None:
     document = workflow_document()
     element_assertion = {
         "id": "assert-ready",
@@ -139,12 +139,92 @@ def test_workflow_accepts_element_and_repeated_group_assertions() -> None:
         },
         "expectation": {"kind": "group_exists"},
     }
-    document["steps"] = [element_assertion, group_assertion]
+    page_text_assertion = {
+        "id": "assert-page-text",
+        "order": 2,
+        "name": "John Snow exists",
+        "enabled": True,
+        "page": {"id": "page-1", "url": "https://shop.example", "title": "People"},
+        "metadata": {
+            "recordedAt": "2026-07-30T12:00:02Z",
+            "origin": "manual",
+            "sensitive": False,
+        },
+        "type": "assertion",
+        "expectation": {"kind": "page_text_contains", "expected": "John Snow"},
+    }
+    document["steps"] = [element_assertion, group_assertion, page_text_assertion]
 
     workflow = Workflow.model_validate(document)
 
-    assert [step.type for step in workflow.steps] == ["assertion", "assertion"]
+    assert [step.type for step in workflow.steps] == ["assertion", "assertion", "assertion"]
     _assert_matches_contract(workflow)
+
+
+@pytest.mark.parametrize(
+    "forbidden",
+    [
+        {"target": {"selector": "body"}},
+        {"position": {"x": 0, "y": 0}},
+        {"waitAfter": {"delayMs": 100}},
+        {
+            "groupTarget": {
+                "version": 1,
+                "algorithm": "structural-token-v1",
+                "root": {"tagName": "article", "sharedClasses": []},
+                "structureTokens": ["0:article:"],
+                "capturedMatchCount": 2,
+            }
+        },
+    ],
+)
+def test_page_text_assertion_rejects_target_position_and_wait_fields(forbidden: dict) -> None:
+    document = workflow_document()
+    document["steps"] = [
+        {
+            "id": "assert-page-text",
+            "order": 0,
+            "name": "John Snow exists",
+            "enabled": True,
+            "page": {"id": "page-1", "url": "https://shop.example"},
+            "metadata": {
+                "recordedAt": "2026-07-30T12:00:02Z",
+                "origin": "manual",
+                "sensitive": False,
+            },
+            "type": "assertion",
+            "expectation": {"kind": "page_text_contains", "expected": "John Snow"},
+            **forbidden,
+        }
+    ]
+
+    with pytest.raises(ValidationError):
+        Workflow.model_validate(document)
+
+
+def test_page_text_assertion_requires_schema_1_5() -> None:
+    document = workflow_document()
+    document["steps"] = [
+        {
+            "id": "assert-page-text",
+            "order": 0,
+            "name": "John Snow exists",
+            "enabled": True,
+            "page": {"id": "page-1", "url": "https://shop.example"},
+            "metadata": {
+                "recordedAt": "2026-07-30T12:00:02Z",
+                "origin": "manual",
+                "sensitive": False,
+            },
+            "type": "assertion",
+            "expectation": {"kind": "page_text_contains", "expected": "John Snow"},
+        }
+    ]
+
+    for schema_version in ["1.2", "1.4"]:
+        document["schemaVersion"] = schema_version
+        with pytest.raises(ValidationError):
+            Workflow.model_validate(document)
 
 
 def test_workflow_rejects_mixed_assertion_targets_and_waits() -> None:
@@ -319,7 +399,7 @@ def test_shared_conformance_fixtures_match_python_and_published_schemas() -> Non
         )
     )
     generated_schema = json.loads(
-        (repository_root / "packages/workflow-contract/schema/workflow-1.4.schema.json").read_text(
+        (repository_root / "packages/workflow-contract/schema/workflow-1.5.schema.json").read_text(
             encoding="utf-8"
         )
     )
@@ -389,7 +469,7 @@ def _assert_matches_contract(workflow: Workflow) -> None:
         / "packages"
         / "workflow-contract"
         / "schema"
-        / "workflow-1.4.schema.json"
+        / "workflow-1.5.schema.json"
     )
     shared_schema = json.loads(shared_schema_path.read_text(encoding="utf-8"))
     shared_errors = list(

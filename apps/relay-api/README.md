@@ -10,7 +10,7 @@ to the private run service. Organizational namespaces own workflows without acti
 authorization boundaries. Canonical workflow documents live in a private S3-compatible
 bucket; PostgreSQL stores their active object keys and safe relational metadata. The
 service does not execute workflows itself. New drafts and explicit saves use canonical
-schema `1.4`; stored schema `1.2` documents remain readable for compatibility.
+schema `1.5`; stored schema `1.2` and `1.4` documents remain readable for compatibility.
 
 ## Quick start
 
@@ -229,9 +229,10 @@ is the provider-specific server consumer. It validates complete workflows while 
 the required `schemaVersion` value as opaque metadata,
 resolves explicit run parameters, owns fresh Browserbase session lifecycle, and returns
 privacy-safe events and outcomes. It does not add an execution route to FastAPI or
-persist run state. Visibility and text-containment assertions execute once without retries.
+persist run state. Visibility and element-text assertions execute once without retries.
 Repeated-group assertions likewise execute once by comparing bounded, visible structural
-candidates through the shared contract's matching rules.
+candidates through the shared contract's matching rules. Page-text assertions snapshot
+the attached visible frame tree once and return only privacy-safe pass/fail diagnostics.
 
 [`apps/automation-service-browserbase`](../automation-service-browserbase/README.md)
 is a separate Fastify process exposing unauthenticated local direct and batch execution APIs.

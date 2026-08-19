@@ -80,7 +80,7 @@ def test_create_replays_the_original_workflow(
     replayed = service.create(key)
 
     assert replayed == created
-    assert created.schema_version == "1.4"
+    assert created.schema_version == "1.5"
     assert created.name == "Untitled recording"
     assert created.status == "draft"
     assert created.revision == 1
@@ -117,8 +117,47 @@ def test_save_preserves_server_fields_and_replays_before_revision_check(
     assert saved.revision == 2
     assert saved.created_at == created.created_at
     assert saved.updated_at == datetime(2026, 7, 30, 12, tzinfo=UTC)
-    assert saved.schema_version == "1.4"
+    assert saved.schema_version == "1.5"
     assert document_store.put_calls == 2
+
+
+def test_save_persists_page_text_assertions_as_schema_1_5(
+    service: WorkflowService,
+) -> None:
+    created = service.create(uuid4())
+    document = workflow_document()
+    document["steps"] = [
+        {
+            "id": "assert-page-text",
+            "order": 0,
+            "name": "John Snow exists",
+            "enabled": True,
+            "page": {"id": "page-1", "url": "https://shop.example", "title": "People"},
+            "metadata": {
+                "recordedAt": "2026-07-30T12:00:02Z",
+                "origin": "manual",
+                "sensitive": False,
+            },
+            "type": "assertion",
+            "expectation": {"kind": "page_text_contains", "expected": "John Snow"},
+        }
+    ]
+    page_text_workflow = Workflow.model_validate(document)
+    incoming = created.model_copy(
+        update={"name": page_text_workflow.name, "steps": page_text_workflow.steps}
+    )
+
+    saved = service.save(
+        created.id,
+        SaveWorkflowRequest(workflow=incoming, expectedRevision=created.revision),
+        uuid4(),
+    )
+    loaded = service.get(created.id)
+
+    assert saved.schema_version == "1.5"
+    assert loaded == saved
+    loaded_step = loaded.model_dump(mode="json", by_alias=True, exclude_none=True)["steps"][0]
+    assert loaded_step == document["steps"][0]
 
 
 def test_finish_sets_lifecycle_once_and_requires_a_step(service: WorkflowService) -> None:

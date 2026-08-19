@@ -57,12 +57,14 @@ function automationPage() {
     uncheck: vi.fn(async () => undefined),
   } as unknown as Locator;
   const frame = {
+    childFrames: vi.fn(() => []),
     evaluate: vi.fn(async () => undefined),
     getByLabel: vi.fn(() => locator),
     getByRole: vi.fn(() => locator),
     getByTestId: vi.fn(() => locator),
     getByText: vi.fn(() => locator),
     locator: vi.fn(() => locator),
+    isDetached: vi.fn(() => false),
     url: vi.fn(() => "https://example.com/form"),
   } as unknown as Frame;
   const page = {
@@ -229,6 +231,29 @@ describe("executeStepAction", () => {
     expect(error).toBeInstanceOf(AutomationExecutionError);
     expect((error as Error).message).toBe("The automation assertion did not pass.");
     expect(JSON.stringify(error)).not.toMatch(/private expected|private observed/);
+  });
+
+  it("runs page-text assertions with fixed privacy-safe diagnostics", async () => {
+    const { frame, page } = automationPage();
+    vi.mocked(frame.evaluate)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const { target: _target, ...base } = baseStep(0);
+    const assertion: WorkflowStep = {
+      ...base,
+      type: "assertion",
+      expectation: { kind: "page_text_contains", expected: "private expected phrase" },
+    };
+
+    await expect(executeStepAction(page, assertion)).resolves.toEqual({
+      locatorKind: "page-text",
+      attempts: [],
+    });
+    const error = await executeStepAction(page, assertion).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AutomationExecutionError);
+    expect((error as Error).message).toBe("The automation assertion did not pass.");
+    expect(JSON.stringify(error)).not.toContain("private expected phrase");
   });
 
   it("passes a visible repeated-group assertion with a matching structural template", async () => {

@@ -41,12 +41,14 @@ function replayPage() {
     uncheck: vi.fn(async () => undefined),
   } as unknown as Locator;
   const frame = {
+    childFrames: vi.fn(() => []),
     evaluate: vi.fn(async () => undefined),
     getByLabel: vi.fn(() => locator),
     getByRole: vi.fn(() => locator),
     getByTestId: vi.fn(() => locator),
     getByText: vi.fn(() => locator),
     locator: vi.fn(() => locator),
+    isDetached: vi.fn(() => false),
     url: vi.fn(() => "https://example.com/form"),
   } as unknown as Frame;
   const page = {
@@ -55,6 +57,36 @@ function replayPage() {
     mainFrame: vi.fn(() => frame),
   } as unknown as Page;
   return { frame, locator, page };
+}
+
+function pageTextStep(expected = "John Snow"): WorkflowStep {
+  const { target: _target, ...base } = baseStep(0);
+  return {
+    ...base,
+    type: "assertion",
+    expectation: { kind: "page_text_contains", expected },
+  };
+}
+
+function textFrame(text: string, options: { visible?: boolean; fails?: boolean; detached?: boolean; children?: Frame[] } = {}) {
+  const frameElement = {
+    isVisible: vi.fn(async () => options.visible ?? true),
+  };
+  return {
+    childFrames: vi.fn(() => options.children ?? []),
+    evaluate: options.fails
+      ? vi.fn(async () => { throw new Error("frame cannot be inspected"); })
+      : vi.fn(async (_callback, expected: string) =>
+        text.replace(/\s+/gu, " ").trim().toLowerCase().includes(expected)),
+    frameElement: vi.fn(async () => frameElement),
+    isDetached: vi.fn(() => options.detached ?? false),
+  } as unknown as Frame;
+}
+
+function pageWithFrameTree(main: Frame): Page {
+  return {
+    mainFrame: vi.fn(() => main),
+  } as unknown as Page;
 }
 
 afterEach(() => vi.useRealTimers());
@@ -141,6 +173,82 @@ describe("phase-level replay operations", () => {
 
     await expect(executeStepAction(page, visible)).resolves.toMatchObject({ locatorKind: "testId" });
     await expect(executeStepAction(page, group)).resolves.toMatchObject({ locatorKind: "structural-group" });
+  });
+
+  it("finds normalized page text in the main frame or an attached nested frame", async () => {
+    const nested = textFrame("  Welcome,\n JOHN    SNOW  ");
+    const main = textFrame("Dashboard", { children: [nested] });
+    const page = pageWithFrameTree(main);
+
+    await expect(executeStepAction(page, pageTextStep("john snow"))).resolves.toEqual({
+      locatorKind: "page-text",
+      attempts: [],
+    });
+  });
+
+  it("skips hidden frame trees and treats detached or failed frames as not found", async () => {
+    const hiddenDescendant = textFrame("John Snow");
+    const hidden = textFrame("John Snow", { visible: false, children: [hiddenDescendant] });
+    const detached = textFrame("John Snow", { detached: true });
+    const failed = textFrame("John Snow", { fails: true });
+    const main = textFrame("Dashboard", { children: [hidden, detached, failed] });
+
+    const error = await executeStepAction(pageWithFrameTree(main), pageTextStep()).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      code: "assertion_failed",
+      phase: "asserting",
+      detail: { kind: "page_text_missing" },
+    });
+    expect(error).not.toHaveProperty("detail.observed");
+    expect(vi.mocked(hidden.evaluate)).not.toHaveBeenCalled();
+    expect(vi.mocked(hiddenDescendant.evaluate)).not.toHaveBeenCalled();
+    expect(vi.mocked(detached.evaluate)).not.toHaveBeenCalled();
+  });
+
+  it("does not combine partial matches across frames", async () => {
+    const main = textFrame("John", { children: [textFrame("Snow")] });
+
+    await expect(executeStepAction(pageWithFrameTree(main), pageTextStep())).rejects.toMatchObject({
+      detail: { kind: "page_text_missing" },
+    });
+  });
+
+  it("evaluates a fresh frame snapshot when a page-text assertion is retried", async () => {
+    const originalChild = textFrame("No matching person");
+    const lateChild = textFrame("John Snow joined");
+    const main = textFrame("", { children: [originalChild] });
+    vi.mocked(main.evaluate).mockImplementation(async () => {
+      vi.mocked(main.childFrames).mockReturnValue([lateChild]);
+      return false;
+    });
+    const page = pageWithFrameTree(main);
+
+    await expect(executeStepAction(page, pageTextStep())).rejects.toMatchObject({
+      detail: { kind: "page_text_missing" },
+    });
+    expect(lateChild.evaluate).not.toHaveBeenCalled();
+
+    await expect(executeStepAction(page, pageTextStep())).resolves.toMatchObject({ locatorKind: "page-text" });
+    expect(main.evaluate).toHaveBeenCalledTimes(2);
+    expect(lateChild.evaluate).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a blocked page-text frame evaluation promptly", async () => {
+    const main = textFrame("");
+    const blocked = new Promise<never>(() => undefined);
+    vi.mocked(main.evaluate).mockReturnValue(blocked);
+    const controller = new AbortController();
+    const running = executeStepAction(
+      pageWithFrameTree(main),
+      pageTextStep(),
+      { signal: controller.signal },
+    );
+
+    await vi.waitFor(() => expect(main.evaluate).toHaveBeenCalledOnce());
+    controller.abort();
+
+    await expect(running).rejects.toMatchObject({ code: "cancelled", phase: "asserting" });
   });
 
   it("cancels an explicit delay", async () => {

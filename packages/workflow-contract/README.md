@@ -4,11 +4,12 @@ Private TypeScript contract for workflows consumed by the shared replay engine.
 
 The package owns:
 
-- canonical schema `1.4` workflow types and strict Zod validation;
-- compatibility reads for frontend versions `1.0` through `1.3`;
+- canonical schema `1.5` workflow types and strict Zod validation;
+- compatibility reads for frontend versions `1.0` through `1.4`;
 - an executable boundary that treats `schemaVersion` as opaque metadata while retaining
   strict structural validation;
-- locator ordering, repeated-group structure, and profile field identifiers;
+- locator ordering, element/group/page-text assertion shapes, repeated-group structure,
+  and profile field identifiers;
 - the generated cross-language JSON Schema artifact and shared conformance fixtures.
 
 It does not own persistence, transport, runner orchestration, browser lifecycle, or UI
@@ -25,7 +26,7 @@ npm run build --workspace @relay/workflow-contract
 npm run schema:check --workspace @relay/workflow-contract
 ```
 
-Regenerate `schema/workflow-1.4.schema.json` after an intentional canonical contract
+Regenerate `schema/workflow-1.5.schema.json` after an intentional canonical contract
 change:
 
 ```bash

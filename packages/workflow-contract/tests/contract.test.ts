@@ -6,6 +6,7 @@ import {
   WorkflowSchema,
   orderLocatorCandidates,
   repeatedGroupSimilarity,
+  type PageTextContainsAssertionStep,
   type RepeatedGroupTemplate,
 } from "../src/index.js";
 
@@ -51,12 +52,39 @@ function workflow(schemaVersion: string) {
 }
 
 describe("shared replay input contract", () => {
-  it("uses schema 1.4 for the complete canonical step union", () => {
-    expect(WorkflowSchema.parse(workflow("1.4"))).toMatchObject({ schemaVersion: "1.4" });
+  it("uses schema 1.5 for the complete canonical step union", () => {
+    expect(WorkflowSchema.parse(workflow("1.5"))).toMatchObject({ schemaVersion: "1.5" });
   });
 
   it("normalizes supported historical frontend documents only at the compatibility boundary", () => {
-    expect(CompatibleWorkflowSchema.parse(workflow("1.2"))).toMatchObject({ schemaVersion: "1.4" });
+    expect(CompatibleWorkflowSchema.parse(workflow("1.2"))).toMatchObject({ schemaVersion: "1.5" });
+    expect(CompatibleWorkflowSchema.parse(workflow("1.4"))).toMatchObject({ schemaVersion: "1.5" });
+  });
+
+  it("accepts only a targetless page-text assertion shape", () => {
+    const step: PageTextContainsAssertionStep = {
+      id: "assert-page-text",
+      order: 0,
+      name: "John Snow exists",
+      enabled: true,
+      page: { id: "page-1", url: "https://example.com" },
+      expectation: { kind: "page_text_contains", expected: "John Snow" },
+      metadata: { recordedAt: timestamp, origin: "manual", sensitive: false },
+      type: "assertion",
+    };
+
+    expect(WorkflowSchema.safeParse({ ...workflow("1.5"), steps: [step] }).success).toBe(true);
+    for (const forbidden of [
+      { target: { selector: "body" } },
+      { groupTarget: groupTemplate() },
+      { position: { x: 0, y: 0 } },
+      { waitAfter: { delayMs: 1 } },
+    ]) {
+      expect(WorkflowSchema.safeParse({
+        ...workflow("1.5"),
+        steps: [{ ...step, ...forbidden }],
+      }).success).toBe(false);
+    }
   });
 
   it("treats the version label as opaque at the executable boundary", () => {
@@ -66,7 +94,7 @@ describe("shared replay input contract", () => {
   });
 
   it("keeps canonical and executable documents strict", () => {
-    expect(WorkflowSchema.safeParse({ ...workflow("1.4"), unexpected: true }).success).toBe(false);
+    expect(WorkflowSchema.safeParse({ ...workflow("1.5"), unexpected: true }).success).toBe(false);
     expect(ExecutableWorkflowSchema.safeParse({ ...workflow("future"), unexpected: true }).success).toBe(false);
   });
 

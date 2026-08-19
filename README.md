@@ -43,10 +43,11 @@ docker build -f apps/relay-api/Dockerfile -t relay-api .
 docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .
 ```
 
-Deploy the recorder with the repository root as the Railpack build context and set
-`RAILPACK_CONFIG_FILE=apps/browser-recorder/railpack.json`. That configuration installs
-once from the root lockfile, builds only the recorder and its shared prerequisites, and
-starts the recorder through its npm workspace.
+The `development` Railway environment is defined project-wide in
+[`/.railway/railway.ts`](.railway/railway.ts). It provisions the recorder, Relay API,
+private Browserbase automation service, PostgreSQL, and workflow bucket from the
+protected `development` branch. See [the Railway runbook](.railway/README.md) for the
+plan, apply, and smoke-test workflow.
 
 ## Repository agent workflow
 
@@ -132,3 +133,5 @@ The approved three-increment repository and agent-tooling normalization is recor
 [`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
 and tracked by
 [`docs/plans/active/relay-monorepo-refactor.md`](docs/plans/active/relay-monorepo-refactor.md).
+The targetless page-text assertion contract and privacy-preserving frame scan are recorded in
+[`apps/browser-recorder/docs/decisions/0025-add-page-text-scan-assertions.md`](apps/browser-recorder/docs/decisions/0025-add-page-text-scan-assertions.md).

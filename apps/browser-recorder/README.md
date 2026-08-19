@@ -20,7 +20,7 @@ Each step can be reviewed, renamed, reordered, disabled, or deleted before the w
 - Returns to recording after replay so workflows can be built and verified incrementally.
 - Waits for DOM and network activity to settle between replayed actions, with optional per-step delay and element conditions.
 - Pauses on failures with Retry, Skip, Take Control, and Stop recovery actions.
-- Checks element visibility or normalized text containment without changing the page.
+- Checks element visibility, element text, or visible page text without changing the page.
 
 The current product foundation focuses on accurate capture, explicit local saving, review, interactive replay, and reusable local profiles. There is no autosave: leaving the editor discards changes made since the last successful Save. The active product direction is maintained in the [product roadmap](./docs/product/roadmap.md).
 
@@ -106,10 +106,10 @@ The dependency-free workflow domain and validation contract lives in the root
 parameter resolution, and library projections remain frontend-owned. Client/server
 message schemas are split by direction under `src/shared/contracts/protocol`.
 
-Saved workflows and new exports use schema version `1.4`, including `status`,
+Saved workflows and new exports use schema version `1.5`, including `status`,
 `revision`, optional `finishedAt` lifecycle fields, explicit input bindings on `fill`
-steps, and element and repeated-group assertions. Supported schema `1.0` through `1.3`
-documents normalize in memory to `1.4`; loading alone never rewrites a stored file. A
+steps, and element, repeated-group, and page-text assertions. Supported schema `1.0`
+through `1.4` documents normalize in memory to `1.5`; loading alone never rewrites a stored file. A
 workflow also contains its Browserbase source, timestamps, and an ordered list of steps.
 Automatic recording produces `fill`, `set_date`, `select`, `click`, and Enter
 `keypress` steps. Manual action steps and existing workflows continue to support:
@@ -120,7 +120,7 @@ navigate · click · fill · select · check · uncheck · keypress · submit
 
 `ElementTarget` keeps multiple locator candidates, ordered from semantic selectors to CSS and XPath fallbacks, rather than coupling replay to one selector. Metadata records whether a step was recorded or manually added, and whether its value may be sensitive.
 
-Assertions are manually authored and remain outside the recorded-action contract. A live-session picker captures the selected element's locator evidence and page context without activating the website or recording the selection click. Replay evaluates the assertion once: `visible` requires one visible match, while `text_contains` compares trimmed, whitespace-collapsed, case-insensitive visible text. Assertions do not define post-step waits.
+Assertions are manually authored and remain outside the recorded-action contract. A live-session picker captures the selected element's locator evidence and page context without activating the website or recording the selection click. Replay evaluates the assertion once: `visible` requires one visible match, `text_contains` compares normalized element text, and `page_text_contains` searches each visible attached frame independently without exposing observed document text. Assertions do not define post-step waits.
 
 Action steps may also define an optional replay wait. A wait can add up to 30 seconds after an action and can require an element to remain visible or hidden before replay continues.
 
@@ -201,12 +201,13 @@ For local development, `npm run dev` also loads an existing, gitignored `secret.
 
 `BROWSERBASE_PROJECT_ID` is optional because Browserbase can infer it from the key. The custom server serves both Next.js and `/ws`, so use the workspace `dev` script instead of `next dev`.
 
-### Railpack deployment
+### Railway deployment
 
-Use the repository root as the build context and set
-`RAILPACK_CONFIG_FILE=apps/browser-recorder/railpack.json`. The tracked configuration
-uses the root lockfile, builds only `@relay/workflow-contract`, `@relay/replay-core`, and
-the recorder workspace, then starts the existing production server script.
+Project-level Railway IaC at [`../../.railway/railway.ts`](../../.railway/railway.ts)
+owns the recorder's Railpack build, start command, health check, source branch, shared
+variables, and private Relay API reference. Follow the
+[Railway development runbook](../../.railway/README.md); do not add a service-level
+`railway.json` or `railway.toml` for this service.
 
 ## Commands
 
@@ -237,7 +238,7 @@ Repository-wide agent commands and hooks run from the repository root. See
 - Local workflow files can contain passwords, tokens, and payment values in plain text; protect the workflow data directory like other secrets.
 - Local profile files contain identity and location information in plain text; protect the profile data directory like other personal data.
 - Exported JSON is plain text and should be handled like a secret.
-- Assertion expected text and observed mismatch text remain plain in workflow files, exports, the UI, and diagnostics. Do not create assertions from secrets or other sensitive page content.
+- Assertion expected text remains plain in workflow files, exports, and the UI. Element-text mismatch diagnostics also include observed element text, so do not create assertions from secrets or other sensitive content. Page-text scans never transfer or report observed document text.
 - Automatic CAPTCHA solving is enabled for recording and replay sessions. During recording, detected challenges temporarily lock local browser input while Browserbase solves them; replay remains unchanged and CAPTCHA lifecycle events stay available in server diagnostics.
 - Sessions are released on Stop, disconnect timeout, replacement, or server shutdown.
 - The default Browserbase session timeout is 30 minutes and may incur usage charges.
