@@ -41,10 +41,9 @@ railway variable set RELAY_API_PASSWORD --stdin --skip-deploys
 
 Type each value on standard input, then send EOF, or pipe it from an approved secret
 manager. Do not put secret values in command arguments, source files, plan output, or
-documentation. The recorder
-and automation service share `BROWSERBASE_API_KEY`; the recorder and API share the Relay
-Basic-auth credentials. `BROWSERBASE_PROJECT_ID` is intentionally omitted because the
-current applications treat it as optional.
+documentation. The recorder and automation service share `BROWSERBASE_API_KEY`; the
+recorder and API share the Relay Basic-auth credentials. `BROWSERBASE_PROJECT_ID` is
+intentionally omitted because the current applications treat it as optional.
 
 ## Plan and apply
 
