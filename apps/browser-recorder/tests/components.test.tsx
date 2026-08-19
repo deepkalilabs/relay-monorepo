@@ -454,6 +454,32 @@ describe("StepEditor", () => {
     expect(screen.queryByRole("button", { name: /add locator/i })).not.toBeInTheDocument();
   });
 
+  it("edits imported page-text assertions without element, position, or wait controls", () => {
+    let step: WorkflowStep = {
+      id: "assertion-page-text",
+      order: 0,
+      name: "John Snow exists",
+      enabled: true,
+      page: { id: "page", url: "https://example.com", title: "People" },
+      expectation: { kind: "page_text_contains", expected: "John Snow" },
+      metadata: { recordedAt: new Date().toISOString(), origin: "manual", sensitive: false },
+      type: "assertion",
+    };
+    const onUpdate = vi.fn((updated: WorkflowStep) => { step = updated; });
+
+    render(<StepEditor step={step} onUpdate={onUpdate} />);
+
+    expect(screen.getByLabelText("Expectation")).toHaveValue("Page contains text");
+    expect(screen.getByLabelText("Expected text")).toHaveValue("John Snow");
+    expect(screen.getByText(/searches visible page text across frames/i)).toBeInTheDocument();
+    expect(screen.queryByText("Position before check")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add locator/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Replay wait")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Expected text"), { target: { value: "Arya Stark" } });
+    expect(step).toMatchObject({ expectation: { kind: "page_text_contains", expected: "Arya Stark" } });
+  });
+
   it("shows inline validation when a required name is removed", async () => {
     const user = userEvent.setup();
     let step: WorkflowStep = stepFromRecordedAction({

@@ -6,6 +6,7 @@ import {
   type Workflow,
   type WorkflowStep,
   isGroupExistsAssertion,
+  isPageTextContainsAssertion,
 } from "@/shared/contracts/workflow/domain";
 import {
   DEFAULT_SETTLE_QUIET_MS,
@@ -100,6 +101,7 @@ function resolvedTargetAdapter(resolved: CoreResolvedTarget): ResolvedTarget {
 
 interface FrontendErrorContext {
   groupAssertion?: GroupExistsAssertionStep;
+  pageTextExpected?: string;
   startStepId?: string;
   timedResolution?: boolean;
   waitingPhase?: "condition" | "delay";
@@ -204,6 +206,11 @@ function frontendErrorMessage(error: ReplayCoreError, context: FrontendErrorCont
         ? "The replay delay could not be completed."
         : `Wait condition did not remain ${context.waitState ?? "stable"} within 15 seconds.`;
     case "assertion_failed":
+      if (error.detail?.kind === "page_text_missing") {
+        return context.pageTextExpected
+          ? `Page text did not contain "${context.pageTextExpected}".`
+          : "The expected page text was not found.";
+      }
       if (error.detail?.kind === "text_mismatch") {
         return `Expected text to contain "${error.detail.expected}", but observed "${error.detail.observed}".`;
       }
@@ -239,6 +246,9 @@ function diagnosticFor(
 ): ReplayDiagnostic {
   if (error instanceof ReplayCoreError) {
     const groupAssertion = isGroupExistsAssertion(step) ? step : undefined;
+    const pageTextExpected = isPageTextContainsAssertion(step)
+      ? step.expectation.expected
+      : undefined;
     const attempts = groupAssertion && error.attempts.some((attempt) => attempt.outcome === "frame_missing")
       ? [{
           kind: "structural-group",
@@ -252,6 +262,7 @@ function diagnosticFor(
     return {
       message: frontendErrorMessage(error, {
         groupAssertion,
+        pageTextExpected,
         timedResolution: step.type !== "assertion",
         waitingPhase,
         waitState: step.waitAfter?.condition?.state,

@@ -118,7 +118,7 @@ describe("RemoteWorkflowRepository", () => {
     const loaded = await new RemoteWorkflowRepository(baseUrl, credentials).get(workflow.id);
 
     expect(loaded).toEqual(workflow);
-    expect(loaded.schemaVersion).toBe("1.4");
+    expect(loaded.schemaVersion).toBe("1.5");
   });
 
   it("maps conflicts and malformed successful responses to neutral errors", async () => {

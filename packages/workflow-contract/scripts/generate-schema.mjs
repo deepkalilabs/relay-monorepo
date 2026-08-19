@@ -5,7 +5,7 @@ import { z } from "zod";
 import { WorkflowSchema } from "../dist/index.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const outputPath = resolve(packageRoot, "schema/workflow-1.4.schema.json");
+const outputPath = resolve(packageRoot, "schema/workflow-1.5.schema.json");
 const schema = z.toJSONSchema(WorkflowSchema, {
   target: "draft-2020-12",
   reused: "ref",
@@ -43,15 +43,35 @@ for (const stepSchema of schema.properties.steps.items.oneOf) {
         properties: {
           expectation: {
             required: ["kind"],
-            properties: { kind: { const: "group_exists" } },
+            properties: { kind: { const: "page_text_contains" } },
           },
         },
       },
-      then: { required: ["groupTarget"], not: { required: ["target"] } },
+      then: {
+        not: {
+          anyOf: [
+            { required: ["target"] },
+            { required: ["groupTarget"] },
+            { required: ["position"] },
+          ],
+        },
+      },
       else: {
-        required: ["target"],
-        not: { required: ["groupTarget"] },
-        properties: { target: replayableTarget(targetSchema) },
+        if: {
+          required: ["expectation"],
+          properties: {
+            expectation: {
+              required: ["kind"],
+              properties: { kind: { const: "group_exists" } },
+            },
+          },
+        },
+        then: { required: ["groupTarget"], not: { required: ["target"] } },
+        else: {
+          required: ["target"],
+          not: { required: ["groupTarget"] },
+          properties: { target: replayableTarget(targetSchema) },
+        },
       },
     }];
   }
@@ -72,14 +92,14 @@ function alignRefinementConstraints(value) {
 }
 
 alignRefinementConstraints(schema);
-schema.$id = "https://relay.local/schemas/workflow-1.4.schema.json";
-schema.title = "Relay Workflow 1.4";
+schema.$id = "https://relay.local/schemas/workflow-1.5.schema.json";
+schema.title = "Relay Workflow 1.5";
 const rendered = `${JSON.stringify(schema, null, 2)}\n`;
 
 if (process.argv.includes("--check")) {
   const current = await readFile(outputPath, "utf8").catch(() => "");
   if (current !== rendered) {
-    process.stderr.write("workflow-1.4.schema.json is out of date; run npm run schema:generate.\n");
+    process.stderr.write("workflow-1.5.schema.json is out of date; run npm run schema:generate.\n");
     process.exitCode = 1;
   }
 } else {

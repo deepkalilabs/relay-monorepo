@@ -7,6 +7,7 @@ import {
   locatorKinds,
   MAX_ASSERTION_TEXT_LENGTH,
   isGroupExistsAssertion,
+  isPageTextContainsAssertion,
   type LocatorCandidate,
   type ViewportPosition,
   type WorkflowStep,
@@ -124,6 +125,22 @@ export function StepEditor({ step, onUpdate, onCollapse, locked = false, reviewL
                 <label className="field"><span>Captured matches</span><input value={step.groupTarget.capturedMatchCount} readOnly aria-readonly="true" /></label>
                 <label className="field"><span>Matcher</span><input value={step.groupTarget.algorithm} readOnly aria-readonly="true" /></label>
                 <label className="field field-wide"><span>Structural tokens</span><textarea value={step.groupTarget.structureTokens.join("\n")} readOnly aria-readonly="true" rows={Math.min(8, step.groupTarget.structureTokens.length)} /></label>
+              </> : step.type === "assertion" && isPageTextContainsAssertion(step) ? <>
+                <label className="field field-wide"><span>Expectation</span><input value="Page contains text" readOnly aria-readonly="true" /></label>
+                <div className="field field-wide">
+                  <label htmlFor={`assertion-expected-${step.id}`}>Expected text</label>
+                  <input
+                    id={`assertion-expected-${step.id}`}
+                    aria-describedby={`assertion-expected-help-${step.id}`}
+                    maxLength={MAX_ASSERTION_TEXT_LENGTH}
+                    value={step.expectation.expected}
+                    onChange={(event) => onUpdate({
+                      ...step,
+                      expectation: { kind: "page_text_contains", expected: event.target.value },
+                    })}
+                  />
+                  <small id={`assertion-expected-help-${step.id}`}>Matching ignores case and repeated whitespace.</small>
+                </div>
               </> : step.type === "assertion" ? <>
                 <label className="field field-wide">
                   <span>Expectation</span>
@@ -178,6 +195,8 @@ export function StepEditor({ step, onUpdate, onCollapse, locked = false, reviewL
             <div id="locator-details-title" className="editor-section-title"><Crosshair size={15} /><span>Locator candidates</span><small>{candidates.length}</small></div>
             {step.type === "assertion" && isGroupExistsAssertion(step) ? (
               <p className="muted-copy">This assertion uses a read-only structural group template instead of element locators.</p>
+            ) : step.type === "assertion" && isPageTextContainsAssertion(step) ? (
+              <p className="muted-copy">This assertion searches visible page text across frames instead of using element locators.</p>
             ) : step.target ? (
               <div className="locator-list">
                 {candidates.map((candidate, index) => (

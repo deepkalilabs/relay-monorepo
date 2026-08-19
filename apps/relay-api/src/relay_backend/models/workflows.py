@@ -310,10 +310,23 @@ class GroupExistsAssertionExpectation(ApiModel):
     kind: Literal["group_exists"]
 
 
+class PageTextContainsAssertionExpectation(ApiModel):
+    kind: Literal["page_text_contains"]
+    expected: str = Field(max_length=1_000)
+
+    @field_validator("expected")
+    @classmethod
+    def require_non_blank_expected_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Assertion text cannot be blank.")
+        return value
+
+
 AssertionExpectation = Annotated[
     VisibleAssertionExpectation
     | TextContainsAssertionExpectation
-    | GroupExistsAssertionExpectation,
+    | GroupExistsAssertionExpectation
+    | PageTextContainsAssertionExpectation,
     Field(discriminator="kind"),
 ]
 
@@ -348,7 +361,14 @@ class AssertionStep(StepBase):
 
     @model_validator(mode="after")
     def require_matching_assertion_target(self) -> AssertionStep:
-        if isinstance(self.expectation, GroupExistsAssertionExpectation):
+        if isinstance(self.expectation, PageTextContainsAssertionExpectation):
+            if (
+                self.target is not None
+                or self.group_target is not None
+                or self.position is not None
+            ):
+                raise ValueError("Page-text assertions cannot configure targets or positions.")
+        elif isinstance(self.expectation, GroupExistsAssertionExpectation):
             if self.group_target is None or self.target is not None:
                 raise ValueError("Group assertions require only a structural template.")
         elif self.target is None or self.group_target is not None:
@@ -372,7 +392,7 @@ WorkflowStep = Annotated[
 
 
 class Workflow(ApiModel):
-    schema_version: Literal["1.2", "1.4"]
+    schema_version: Literal["1.2", "1.4", "1.5"]
     id: UUID
     name: NonEmptyString
     status: WorkflowStatus
@@ -390,6 +410,16 @@ class Workflow(ApiModel):
         if not trimmed:
             raise ValueError("Workflow names cannot be empty.")
         return trimmed
+
+    @model_validator(mode="after")
+    def require_page_text_schema_version(self) -> Workflow:
+        if self.schema_version != "1.5" and any(
+            isinstance(step, AssertionStep)
+            and isinstance(step.expectation, PageTextContainsAssertionExpectation)
+            for step in self.steps
+        ):
+            raise ValueError("Page-text assertions require workflow schema 1.5.")
+        return self
 
 
 class SaveWorkflowRequest(ApiModel):
