@@ -50,7 +50,7 @@ frontend. Do not relocate automation-core in this increment.
 ## Previous implementation
 
 The duplicate implementation is concentrated in
-`frontend/src/server/replay/engine.ts`. It previously owned preflight, locator and frame
+`apps/browser-recorder/src/server/replay/engine.ts`. It previously owned preflight, locator and frame
 resolution, positioning, every action and assertion, request/DOM settling, delay and
 condition waits, cancellation polling, diagnostics, and the interactive state machine.
 
@@ -59,7 +59,7 @@ also import `applyPositionBefore`, `resolveTarget`, and `resolveTargetOnce`. Pre
 these exports as thin frontend adapters during the migration; do not force unrelated
 callers or tests to import replay-core directly.
 
-`frontend/src/server/replay/redundant-option-click.ts` duplicates the shared classifier
+`apps/browser-recorder/src/server/replay/redundant-option-click.ts` duplicates the shared classifier
 and can be removed after its frontend adapter or direct import is covered.
 
 ## Required implementation
@@ -84,11 +84,11 @@ repeated groups, child frames, and recorded positioning.
 
 ### 2. Add the frontend dependency and compatibility adapter
 
-Add `@relay/replay-core` to `frontend/package.json` with the same root-package convention
+Add `@relay/replay-core` to `apps/browser-recorder/package.json` with the same root-package convention
 used for `@relay/workflow-contract`. Update the frontend and root lockfiles without
 consolidating or deleting project lockfiles.
 
-Keep the public surface of `frontend/src/server/replay/engine.ts` stable. Its helper
+Keep the public surface of `apps/browser-recorder/src/server/replay/engine.ts` stable. Its helper
 exports should delegate to replay-core and translate structured core failures into the
 existing frontend behavior. The frontend adapter, not replay-core, owns human-readable
 messages and `ReplayDiagnostic` conversion.
@@ -173,14 +173,14 @@ details.
 
 Primary changes:
 
-- `frontend/package.json`
-- `frontend/package-lock.json`
+- `apps/browser-recorder/package.json`
+- `apps/browser-recorder/package-lock.json`
 - root `package-lock.json`
-- `frontend/src/server/replay/engine.ts`
-- `frontend/src/server/replay/redundant-option-click.ts` (remove after adoption)
-- `frontend/tests/replay.test.ts`
-- `frontend/tests/e2e/replay-fill.spec.ts`
-- relevant replay cases in `frontend/tests/e2e/recorder-fixture.spec.ts`
+- `apps/browser-recorder/src/server/replay/engine.ts`
+- `apps/browser-recorder/src/server/replay/redundant-option-click.ts` (remove after adoption)
+- `apps/browser-recorder/tests/replay.test.ts`
+- `apps/browser-recorder/tests/e2e/replay-fill.spec.ts`
+- relevant replay cases in `apps/browser-recorder/tests/e2e/recorder-fixture.spec.ts`
 - shared replay documentation and this handoff's status
 
 Touch protocol schemas, UI components, recording code, automation-core, worker/service
@@ -203,7 +203,7 @@ necessary. Such a change is a scope warning and must be explained before proceed
 
 ### Frontend verification
 
-From `frontend/`:
+From `apps/browser-recorder/`:
 
 ```bash
 npm run test:changed
@@ -257,7 +257,7 @@ decision.
 
 ## Explicit non-goals
 
-- relocating `backend/packages/automation-core`;
+- relocating `packages/automation-core`;
 - changing workflow schema version `1.4` or compatibility readers;
 - changing WebSocket or `ServerMessage` contracts;
 - changing Browserbase lifecycle, session recovery, or transport;

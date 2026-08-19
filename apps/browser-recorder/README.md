@@ -213,7 +213,7 @@ For local development, `npm run dev` also loads an existing, gitignored `secret.
 
 Repository-wide agent commands, hooks, and the supervised Ralph loop run from the
 repository root. See [`../../docs/README.md`](../../docs/README.md) and the root
-[`README.md`](../README.md).
+[`README.md`](../../README.md).
 
 ## Security and session lifecycle
 

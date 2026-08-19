@@ -3,7 +3,7 @@
 - [x] Task 1: Approve the feature spec and four open product decisions.
   - Acceptance: Parameterizable step types, missing-field behavior, replay handoff, and sensitive-preview behavior are explicit.
   - Verify: Human approval of `docs/product/features/profile-parameterization.md`.
-  - Files: `frontend/docs/product/features/profile-parameterization.md`, `docs/plans/archive/browser-recorder-profile-parameterization.md`
+  - Files: `apps/browser-recorder/docs/product/features/profile-parameterization.md`, `docs/plans/archive/browser-recorder-profile-parameterization.md`
 
 - [x] Task 2: Record the parameter-binding and privacy architecture.
   - Acceptance: ADR defines schema versioning, backward normalization, profile field IDs, ephemeral resolution, and forbidden persistence/logging.

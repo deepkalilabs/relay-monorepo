@@ -34,6 +34,13 @@ npm run test:changed
 npm run test:tooling
 ```
 
+Build both deployment images from the repository root:
+
+```bash
+docker build -f apps/relay-api/Dockerfile -t relay-api .
+docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .
+```
+
 ## Repository agent workflow
 
 Read the root [`AGENTS.md`](AGENTS.md) and then the nearest project guide before making

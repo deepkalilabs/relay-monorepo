@@ -32,7 +32,7 @@ Increment 2 is complete in commit `7c0e054`. Increment 3 is complete on
 1. Use schema version `1.4` for all new canonical writes. Keep compatibility readers for
    versions `1.0` through `1.3`; do not require a bulk stored-document migration.
 2. Treat document shape, not the version label alone, as the capability boundary.
-3. Keep `backend/packages/automation-core` in place during behavior migration. It remains
+3. Keep `packages/automation-core` in place during behavior migration. It remains
    the compatibility facade used by the worker and service.
 4. Add two focused root packages that form one shared replay-engine architecture:
    `workflow-contract` defines engine inputs and `replay-core` executes them.
@@ -210,7 +210,7 @@ Suggested commit: `Use the shared replay engine in frontend`.
 ## Deferred follow-up: Relocate automation-core
 
 After Increment 6 is stable, mechanically move
-`backend/packages/automation-core` to `packages/automation-core`. Update workspace,
+`packages/automation-core` to `packages/automation-core`. Update workspace,
 consumer, Docker, lockfile, and documentation paths together. Preserve source and tests
 byte-for-byte where practical so Git records a rename.
 

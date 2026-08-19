@@ -9,6 +9,8 @@ project routing, and verification. The repository layout is governed by
 - Recorder work under `apps/browser-recorder/`: read [`apps/browser-recorder/AGENTS.md`](apps/browser-recorder/AGENTS.md).
 - API work under `apps/relay-api/`: read
   [`apps/relay-api/AGENTS.md`](apps/relay-api/AGENTS.md).
+- Browserbase execution-service work under `apps/automation-service-browserbase/`: read
+  [`apps/automation-service-browserbase/AGENTS.md`](apps/automation-service-browserbase/AGENTS.md).
 - Shared root workspace or repository tooling work: follow this guide and also read
   every nested guide whose project is affected.
 
@@ -62,8 +64,8 @@ directory and record every added ADR before push:
 
 ```sh
 npm run adr:review -- \
-  --adr apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md \
-  --reason "Records the reviewed repository ownership and layout decision."
+  --adr apps/browser-recorder/docs/decisions/0025-example-decision.md \
+  --reason "Records the reviewed architectural decision."
 ```
 
 For a routine branch with no architectural decision:
@@ -80,8 +82,10 @@ review. Install the tracked hook after cloning with `npm run hooks:install`.
 
 - Root tooling: `npm run test:tooling` plus the affected root command.
 - Root Node workspace: `npm run typecheck` and the affected root test command.
-- Recorder: run `npm run test:changed` from `apps/browser-recorder/`; if Vitest finds no affected
-  tests, report that result instead of substituting the full suite.
+- Recorder: run `npm run test:changed` from `apps/browser-recorder/`; if Vitest finds no
+  affected tests, report that result instead of substituting the full suite.
+- Automation service: run the checks in
+  `apps/automation-service-browserbase/AGENTS.md`.
 - API and API-owned integration checks: run the checks in `apps/relay-api/AGENTS.md`.
 - Cross-project work: run every applicable project check.
 

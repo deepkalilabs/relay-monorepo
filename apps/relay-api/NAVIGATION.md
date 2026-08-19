@@ -607,6 +607,7 @@ npm ci
 npm run typecheck
 npm run test:automation
 npm run build
+docker build -f apps/relay-api/Dockerfile -t relay-api .
 docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .
 ```
 

@@ -125,6 +125,7 @@ documents, parameters, batch IDs, artifact IDs, or private service URLs.
 | `npm run test:automation` (repository root) | Check the shared contract and replay core, then run headless consumer tests |
 | `npm run typecheck` (repository root) | Build shared dependencies and typecheck every Node workspace |
 | `npm run build` (repository root) | Build the shared contract, automation packages, and frontend in dependency order |
+| `docker build -f apps/relay-api/Dockerfile -t relay-api .` (repository root) | Build the persistence API image with its sibling execution contract |
 | `docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .` (repository root) | Build the automation service image with its root-owned replay dependencies |
 | `npm start --prefix apps/automation-service-browserbase` (repository root) | Start the execution service |
 

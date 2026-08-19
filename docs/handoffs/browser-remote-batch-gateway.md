@@ -140,4 +140,4 @@ persist it beyond the browser's immediate display needs.
 - Do not make the private automation service publicly reachable.
 - Do not add batch idempotency or automatic creation retries.
 - Do not change the backend request or polling schemas from the checked-in public
-  `relay_backend/openapi.yaml` contract.
+  `apps/relay-api/openapi.yaml` contract.

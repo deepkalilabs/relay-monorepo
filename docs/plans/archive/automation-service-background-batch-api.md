@@ -2,7 +2,7 @@
 
 - Status: Implemented
 - Repository: `relay_backend`
-- Owning package: `packages/automation-service-browserbase`
+- Owning package: `apps/automation-service-browserbase`
 - Related decision: `docs/decisions/0005-stateless-browserbase-run-service.md`
 
 ## Objective
@@ -215,7 +215,7 @@ capacity accounting so they cannot exceed the Browserbase project limit.
 ## Project Structure
 
 ```text
-packages/automation-service-browserbase/
+apps/automation-service-browserbase/
 ├── openapi.yaml
 ├── README.md
 ├── src/
@@ -294,11 +294,11 @@ not expanded to run ten sessions.
 ## Commands
 
 ```bash
-npm run typecheck --prefix packages/automation-service-browserbase
-npm test --prefix packages/automation-service-browserbase
-npm run build --prefix packages/automation-service-browserbase
-npm pack --dry-run ./packages/automation-service-browserbase
-uv run python -m openapi_spec_validator packages/automation-service-browserbase/openapi.yaml
+npm run typecheck --prefix apps/automation-service-browserbase
+npm test --prefix apps/automation-service-browserbase
+npm run build --prefix apps/automation-service-browserbase
+npm pack --dry-run ./apps/automation-service-browserbase
+uv run python -m openapi_spec_validator apps/automation-service-browserbase/openapi.yaml
 ```
 
 ## Boundaries
