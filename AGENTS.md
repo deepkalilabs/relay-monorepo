@@ -27,8 +27,9 @@ the repository-wide policy in this file.
   shared libraries in their owning root `packages/` directories.
 - Keep repository-wide agent configuration, hooks, orchestration, and code-intelligence
   support under `.codex/`, `.githooks/`, `.ralphex/`, and `tooling/` at the root.
-- Use the root Node workspace for cross-project orchestration. Retain project lockfiles
-  and project-local deployment commands until the lockfile-consolidation PR.
+- Run Node installation only from the repository root with `npm ci`. The root
+  `package-lock.json` is the only Node lockfile; use workspace commands instead of
+  adding project-local lockfiles or install flows.
 - Do not merge application and shared-package ownership as part of unrelated work.
 - Keep accepted architectural decisions in their current owning decision directory
   until an approved move. Never edit or discard an accepted ADR; supersede it.
@@ -82,6 +83,7 @@ review. Install the tracked hook after cloning with `npm run hooks:install`.
 
 - Root tooling: `npm run test:tooling` plus the affected root command.
 - Root Node workspace: `npm run typecheck` and the affected root test command.
+- Root-only installation and lockfile ownership: `npm run verify:locks`.
 - Recorder: run `npm run test:changed` from `apps/browser-recorder/`; if Vitest finds no
   affected tests, report that result instead of substituting the full suite.
 - Automation service: run the checks in

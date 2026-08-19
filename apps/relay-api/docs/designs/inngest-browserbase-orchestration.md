@@ -205,9 +205,9 @@ Automated checks must prove:
 Run the existing TypeScript checks after the focused tests:
 
 ```bash
-npm run typecheck --prefix apps/automation-service-browserbase
-npm test --prefix apps/automation-service-browserbase
-npm run build --prefix apps/automation-service-browserbase
+npm run typecheck --workspace @relay/automation-service-browserbase
+npm test --workspace @relay/automation-service-browserbase
+npm run build --workspace @relay/automation-service-browserbase
 ```
 
 Perform one paid Browserbase smoke run manually only after fake-worker tests pass.

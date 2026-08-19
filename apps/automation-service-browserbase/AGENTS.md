@@ -24,7 +24,8 @@ contract; the Relay API consumes that file read-only from its sibling app.
 
 ## Verification
 
-Run Node checks from the repository root so npm resolves sibling workspaces:
+Install Node dependencies once with `npm ci` and run Node checks from the repository
+root so npm resolves sibling workspaces:
 
 ```bash
 npm run typecheck --workspace @relay/automation-service-browserbase

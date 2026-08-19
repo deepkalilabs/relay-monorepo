@@ -22,6 +22,9 @@ Requirements:
 - A private S3-compatible bucket and its credentials
 - Node.js 24 or newer for automation packages
 
+Install Node dependencies once from the repository root with `npm ci`. Run the Python
+setup below from `apps/relay-api/`:
+
 ```bash
 cp .env.example .env
 uv sync --extra dev
@@ -127,7 +130,7 @@ documents, parameters, batch IDs, artifact IDs, or private service URLs.
 | `npm run build` (repository root) | Build the shared contract, automation packages, and frontend in dependency order |
 | `docker build -f apps/relay-api/Dockerfile -t relay-api .` (repository root) | Build the persistence API image with its sibling execution contract |
 | `docker build -f apps/automation-service-browserbase/Dockerfile -t relay-automation .` (repository root) | Build the automation service image with its root-owned replay dependencies |
-| `npm start --prefix apps/automation-service-browserbase` (repository root) | Start the execution service |
+| `npm run start --workspace @relay/automation-service-browserbase` (repository root) | Start the execution service |
 
 Tests use `TEST_DATABASE_URL` when set and otherwise use the local Compose database.
 They truncate workflow and idempotency data and remove non-default test namespaces

@@ -16,18 +16,20 @@ state.
 
 ## Commands
 
+Install once with `npm ci` and run this package's commands from the repository root:
+
 ```bash
-npm test
-npm run typecheck
-npm run build
-npm run schema:check
+npm test --workspace @relay/workflow-contract
+npm run typecheck --workspace @relay/workflow-contract
+npm run build --workspace @relay/workflow-contract
+npm run schema:check --workspace @relay/workflow-contract
 ```
 
 Regenerate `schema/workflow-1.4.schema.json` after an intentional canonical contract
 change:
 
 ```bash
-npm run schema:generate
+npm run schema:generate --workspace @relay/workflow-contract
 ```
 
 `fixtures/conformance.json` is executed against Zod, the generated JSON Schema,

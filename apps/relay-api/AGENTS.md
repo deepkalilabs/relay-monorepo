@@ -65,10 +65,16 @@ uv run ruff check src tests migrations
 uv run ruff format --check src tests
 uv run pytest
 uv run python -m openapi_spec_validator openapi.yaml
-npm run typecheck --prefix ../automation-service-browserbase
-npm test --prefix ../automation-service-browserbase
-npm run build --prefix ../automation-service-browserbase
 uv run python -m openapi_spec_validator ../automation-service-browserbase/openapi.yaml
+```
+
+Install Node dependencies once from the repository root with `npm ci`, then run the
+execution-service checks there:
+
+```bash
+npm run typecheck --workspace @relay/automation-service-browserbase
+npm test --workspace @relay/automation-service-browserbase
+npm run build --workspace @relay/automation-service-browserbase
 ```
 
 Tests require PostgreSQL. They use `TEST_DATABASE_URL` when present and otherwise use

@@ -544,13 +544,9 @@ are package markers and contain no runtime behavior.
   `src/` package layout, and force-includes `openapi.yaml` in built wheels.
 - [`uv.lock`](uv.lock) pins the resolved dependency graph and should change together
   with dependency declarations.
-- [`packages/automation-core/package-lock.json`](../../packages/automation-core/package-lock.json)
-  independently locks the TypeScript library and its root-owned shared-contract dependency
-  for isolated automation image builds.
-- [`packages/automation-worker-browserbase/package-lock.json`](../../packages/automation-worker-browserbase/package-lock.json)
-  independently locks the Browserbase worker and its local automation-core dependency.
-- [`apps/automation-service-browserbase/package-lock.json`](../automation-service-browserbase/package-lock.json)
-  independently locks Fastify and its local Browserbase worker dependency.
+- [`package-lock.json`](../../package-lock.json) is the only Node lockfile. Install from
+  the repository root so npm links the automation packages and service through the root
+  workspace graph; Docker uses the same lockfile and root build context.
 
 ## Testing architecture
 

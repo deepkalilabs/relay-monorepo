@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.16.0",
-    "@relay/automation-core": "file:../automation-core",
+    "@relay/automation-core": "^0.1.0",
     "playwright-core": "^1.61.1"
   },
   "devDependencies": {

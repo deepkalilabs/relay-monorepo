@@ -7,21 +7,21 @@ PostgreSQL.
 
 ## Setup
 
-Build the local dependencies before installing this package:
+Install once and build the service dependency chain from the repository root:
 
 ```bash
-npm ci --prefix packages/automation-core
-npm run build --prefix packages/automation-core
-npm ci --prefix packages/automation-worker-browserbase
-npm run build --prefix packages/automation-worker-browserbase
-npm ci --prefix apps/automation-service-browserbase
-npm run build --prefix apps/automation-service-browserbase
+npm ci
+npm run build --workspace @relay/workflow-contract
+npm run build --workspace @relay/replay-core
+npm run build --workspace @relay/automation-core
+npm run build --workspace @relay/automation-worker-browserbase
+npm run build --workspace @relay/automation-service-browserbase
 ```
 
 Set `BROWSERBASE_API_KEY`, then start the service:
 
 ```bash
-npm start --prefix apps/automation-service-browserbase
+npm run start --workspace @relay/automation-service-browserbase
 ```
 
 The service reads only process environment variables. It does not load another
@@ -31,7 +31,7 @@ From the repository root, a one-line local development start using the ignored `
 file is:
 
 ```bash
-set -a; source .env; set +a; npm run dev --prefix apps/automation-service-browserbase
+set -a; source .env; set +a; npm run dev --workspace @relay/automation-service-browserbase
 ```
 
 ## API
@@ -208,9 +208,9 @@ logs.
 ## Verification
 
 ```bash
-npm run typecheck --prefix apps/automation-service-browserbase
-npm test --prefix apps/automation-service-browserbase
-npm run build --prefix apps/automation-service-browserbase
+npm run typecheck --workspace @relay/automation-service-browserbase
+npm test --workspace @relay/automation-service-browserbase
+npm run build --workspace @relay/automation-service-browserbase
 npm pack --dry-run ./apps/automation-service-browserbase
 ```
 
@@ -218,7 +218,7 @@ Normal tests use fake Browserbase and Playwright dependencies. A paid navigation
 HTTP smoke test is explicitly opt-in:
 
 ```bash
-BROWSERBASE_E2E=1 npm run test:browserbase --prefix apps/automation-service-browserbase
+BROWSERBASE_E2E=1 npm run test:browserbase --workspace @relay/automation-service-browserbase
 ```
 
 ## Deliberate boundaries
