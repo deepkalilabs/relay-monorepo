@@ -201,12 +201,13 @@ For local development, `npm run dev` also loads an existing, gitignored `secret.
 
 `BROWSERBASE_PROJECT_ID` is optional because Browserbase can infer it from the key. The custom server serves both Next.js and `/ws`, so use the workspace `dev` script instead of `next dev`.
 
-### Railpack deployment
+### Railway deployment
 
-Use the repository root as the build context and set
-`RAILPACK_CONFIG_FILE=apps/browser-recorder/railpack.json`. The tracked configuration
-uses the root lockfile, builds only `@relay/workflow-contract`, `@relay/replay-core`, and
-the recorder workspace, then starts the existing production server script.
+Project-level Railway IaC at [`../../.railway/railway.ts`](../../.railway/railway.ts)
+owns the recorder's Railpack build, start command, health check, source branch, shared
+variables, and private Relay API reference. Follow the
+[Railway development runbook](../../.railway/README.md); do not add a service-level
+`railway.json` or `railway.toml` for this service.
 
 ## Commands
 
