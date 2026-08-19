@@ -9,7 +9,7 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 class ContractBuildHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
         repository_contract = (
-            Path(self.root).parent / "apps" / "automation-service-browserbase" / "openapi.yaml"
+            Path(self.root).parent / "automation-service-browserbase" / "openapi.yaml"
         )
         bundled_contract = (
             Path(self.root) / "apps" / "automation-service-browserbase" / "openapi.yaml"

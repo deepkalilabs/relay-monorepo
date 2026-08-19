@@ -211,7 +211,7 @@ Controller → Service ───┤
   batch requests between the authenticated FastAPI boundary and the private execution
   service. Batch responses are bounded before the public response begins.
 
-[`packages/automation-core`](../packages/automation-core/README.md) is an independent ESM
+[`packages/automation-core`](../../packages/automation-core/README.md) is an independent ESM
 library. A background runner supplies an existing Playwright `Page`, receives
 transport-neutral events and structured results, and remains responsible for browser
 lifecycle and any persistence. It consumes the root `@relay/workflow-contract`
@@ -220,7 +220,7 @@ executable schema and delegates provider-neutral Playwright phases to the root
 privacy-safe background diagnostics. The package has no dependency on FastAPI,
 PostgreSQL, Browserbase, or the service's internal persistence model.
 
-[`packages/automation-worker-browserbase`](../packages/automation-worker-browserbase/README.md)
+[`packages/automation-worker-browserbase`](../../packages/automation-worker-browserbase/README.md)
 is the provider-specific server consumer. It validates complete workflows while treating
 the required `schemaVersion` value as opaque metadata,
 resolves explicit run parameters, owns fresh Browserbase session lifecycle, and returns
@@ -229,7 +229,7 @@ persist run state. Visibility and text-containment assertions execute once witho
 Repeated-group assertions likewise execute once by comparing bounded, visible structural
 candidates through the shared contract's matching rules.
 
-[`apps/automation-service-browserbase`](../apps/automation-service-browserbase/README.md)
+[`apps/automation-service-browserbase`](../automation-service-browserbase/README.md)
 is a separate Fastify process exposing unauthenticated local direct and batch execution APIs.
 `POST /v1/run` streams privacy-safe NDJSON and cancels on disconnect. `POST /v1/batches`
 queues one to ten workflows in process memory, while `GET /v1/batches/{batchId}` polls
@@ -299,6 +299,6 @@ to expose publicly.
 ## Browser handoff
 
 The browser automation client still needs the separate integration described in
-[`../docs/handoffs/browser-remote-batch-gateway.md`](../docs/handoffs/browser-remote-batch-gateway.md).
+[`../../docs/handoffs/browser-remote-batch-gateway.md`](../../docs/handoffs/browser-remote-batch-gateway.md).
 In summary: remove `AUTOMATION_SERVICE_TOKEN`, use Relay HTTP Basic credentials only at
 the public `RELAY_API_BASE_URL`, and keep batch creation non-retrying.

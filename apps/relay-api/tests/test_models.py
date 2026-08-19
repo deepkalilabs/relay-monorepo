@@ -312,7 +312,7 @@ def test_validated_workflow_matches_authoritative_openapi_schema() -> None:
 
 
 def test_shared_conformance_fixtures_match_python_and_published_schemas() -> None:
-    repository_root = Path(__file__).parents[2]
+    repository_root = Path(__file__).parents[3]
     fixtures = json.loads(
         (repository_root / "packages/workflow-contract/fixtures/conformance.json").read_text(
             encoding="utf-8"
@@ -325,7 +325,7 @@ def test_shared_conformance_fixtures_match_python_and_published_schemas() -> Non
     )
     generated_validator = Draft202012Validator(generated_schema, format_checker=FormatChecker())
     openapi_validators = [
-        _workflow_validator(repository_root / "backend/openapi.yaml"),
+        _workflow_validator(repository_root / "apps/relay-api/openapi.yaml"),
         _workflow_validator(
             repository_root / "apps/browser-recorder/docs/specs/cloud-workflow-api.openapi.yaml"
         ),
@@ -385,7 +385,7 @@ def _assert_matches_contract(workflow: Workflow) -> None:
     assert errors == []
 
     shared_schema_path = (
-        Path(__file__).parents[2]
+        Path(__file__).parents[3]
         / "packages"
         / "workflow-contract"
         / "schema"

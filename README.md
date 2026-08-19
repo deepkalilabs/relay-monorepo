@@ -9,18 +9,19 @@ their current Node projects without changing application or deployment ownership
 | Project | Purpose | Documentation |
 | --- | --- | --- |
 | [`apps/browser-recorder/`](apps/browser-recorder/) | Next.js application, local BFF, recorder WebSocket, and interactive replay | [`apps/browser-recorder/README.md`](apps/browser-recorder/README.md) |
-| [`backend/`](backend/) | FastAPI persistence API and the existing Browserbase automation packages | [`backend/README.md`](backend/README.md) |
+| [`apps/relay-api/`](apps/relay-api/) | FastAPI persistence API and authenticated automation gateway | [`apps/relay-api/README.md`](apps/relay-api/README.md) |
+| [`apps/automation-service-browserbase/`](apps/automation-service-browserbase/) | Private Browserbase execution service | [`apps/automation-service-browserbase/README.md`](apps/automation-service-browserbase/README.md) |
 
 The root Node workspace provides cross-project build and verification commands. Use it
 for Node commands in a full repository checkout. During the incremental migration,
 project lockfiles remain available to deployment contexts that receive only their
-owning project directory. Python remains independently managed under `backend/`.
+owning project directory. Python remains independently managed under `apps/relay-api/`.
 
 The shared replay input contract lives in
 [`packages/workflow-contract/`](packages/workflow-contract/), and provider-neutral
 Playwright phases live in [`packages/replay-core/`](packages/replay-core/). Both are
 consumed through the root workspace. Automation-core delegates execution to replay-core
-while remaining physically owned by `backend/` during the incremental migration.
+from its root-owned package.
 
 Install and verify all current Node workspaces:
 
@@ -68,7 +69,7 @@ npm run dev
 Start the persistence API:
 
 ```bash
-cd backend
+cd apps/relay-api
 cp .env.example .env
 uv sync --extra dev
 docker compose up -d --wait postgres
@@ -84,7 +85,7 @@ delegating provider-neutral behavior to the shared replay engine. The frontend k
 its interactive state machine and delegates the same provider-neutral phases to
 replay-core.
 
-Local recorder and backend commands use `apps/browser-recorder/` or `backend/` as their
+Local recorder and API commands use `apps/browser-recorder/` or `apps/relay-api/` as their
 working directory. Both Docker images now use the repository root as their build context
 so they can consume sibling packages and contracts.
 

@@ -1,16 +1,14 @@
 # Relay monorepo agent guide
 
 This file is the repository-wide authority for Git safety, architectural review,
-project routing, and verification. The repository is being normalized in the
-merge-gated sequence recorded by
+project routing, and verification. The repository layout is governed by
 [`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md).
-Until those moves land, treat the current paths below as the ownership boundaries.
 
 ## Read before changing files
 
 - Recorder work under `apps/browser-recorder/`: read [`apps/browser-recorder/AGENTS.md`](apps/browser-recorder/AGENTS.md).
-- API or backend-owned automation work under `backend/`: read
-  [`backend/AGENTS.md`](backend/AGENTS.md).
+- API work under `apps/relay-api/`: read
+  [`apps/relay-api/AGENTS.md`](apps/relay-api/AGENTS.md).
 - Shared root workspace or repository tooling work: follow this guide and also read
   every nested guide whose project is affected.
 
@@ -21,13 +19,15 @@ the repository-wide policy in this file.
 
 - Keep recorder code, tests, documentation, and deployment files in
   `apps/browser-recorder/`.
-- Keep API dependency management, migrations, contracts, automation packages,
-  documentation, and deployment files in `backend/` until their approved moves.
+- Keep API dependency management, migrations, contracts, documentation, and deployment
+  files in `apps/relay-api/`.
+- Keep the Browserbase execution service in `apps/automation-service-browserbase/` and
+  shared libraries in their owning root `packages/` directories.
 - Keep repository-wide agent configuration, hooks, orchestration, and code-intelligence
   support under `.codex/`, `.githooks/`, `.ralphex/`, and `tooling/` at the root.
 - Use the root Node workspace for cross-project orchestration. Retain project lockfiles
   and project-local deployment commands until the lockfile-consolidation PR.
-- Do not extract or consolidate backend automation libraries as part of unrelated work.
+- Do not merge application and shared-package ownership as part of unrelated work.
 - Keep accepted architectural decisions in their current owning decision directory
   until an approved move. Never edit or discard an accepted ADR; supersede it.
 - Do not introduce application behavior, public API, OpenAPI, package export, CLI,
@@ -82,7 +82,7 @@ review. Install the tracked hook after cloning with `npm run hooks:install`.
 - Root Node workspace: `npm run typecheck` and the affected root test command.
 - Recorder: run `npm run test:changed` from `apps/browser-recorder/`; if Vitest finds no affected
   tests, report that result instead of substituting the full suite.
-- Backend API and backend-owned automation: run the checks in `backend/AGENTS.md`.
+- API and API-owned integration checks: run the checks in `apps/relay-api/AGENTS.md`.
 - Cross-project work: run every applicable project check.
 
 Use the narrow checks during development and the complete checks required by the active
