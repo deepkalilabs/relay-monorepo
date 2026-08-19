@@ -1,6 +1,7 @@
 import type { Frame, Page } from "playwright-core";
 import {
   isGroupExistsAssertion,
+  isPageTextContainsAssertion,
   locatorCandidatesForTarget,
   repeatedGroupSimilarity,
   type GroupExistsAssertionStep,
@@ -22,6 +23,7 @@ import {
   resolveTarget,
   resolveTargetOnce,
 } from "./target-resolution.js";
+import { pageContainsText } from "./page-text-scan.js";
 
 export interface ReplayActionResult {
   locatorKind?: string;
@@ -222,7 +224,9 @@ async function executeStepActionUncancelled(
   const phase = step.type === "assertion" ? "asserting" : "acting";
   const timeoutMs = options.timeoutMs ?? DEFAULT_STEP_TIMEOUT_MS;
   try {
-    if (!isGroupExistsAssertion(step)) await applyPositionBefore(page, step, options);
+    if (!isGroupExistsAssertion(step) && !isPageTextContainsAssertion(step)) {
+      await applyPositionBefore(page, step, options);
+    }
     throwIfCancelled(options.signal, phase);
     if (step.type === "navigate") {
       await page.goto(step.payload.url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
@@ -231,6 +235,17 @@ async function executeStepActionUncancelled(
     }
     if (step.type === "assertion") {
       if (isGroupExistsAssertion(step)) return evaluateGroupExistsAssertion(page, step, options);
+      if (isPageTextContainsAssertion(step)) {
+        if (!await pageContainsText(page, step.expectation.expected, options)) {
+          throw new ReplayCoreError(
+            "assertion_failed",
+            "asserting",
+            [],
+            { kind: "page_text_missing" },
+          );
+        }
+        return { locatorKind: "page-text", attempts: [] };
+      }
       const resolved = await resolveTargetOnce(page, step.target, step.page.url, {
         ...options,
         phase: "asserting",

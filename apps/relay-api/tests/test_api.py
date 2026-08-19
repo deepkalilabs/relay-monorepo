@@ -304,6 +304,41 @@ def test_save_maps_revision_and_idempotency_conflicts(client: TestClient) -> Non
     assert revision_conflict.json()["error"]["code"] == "revision_conflict"
 
 
+def test_api_saves_and_reloads_targetless_page_text_assertions(client: TestClient) -> None:
+    created = client.post(
+        "/v1/workflows",
+        headers={"Idempotency-Key": str(uuid4())},
+    ).json()
+    payload = save_payload(created)
+    payload["workflow"]["steps"] = [
+        {
+            "id": "assert-page-text",
+            "order": 0,
+            "name": "John Snow exists",
+            "enabled": True,
+            "page": {"id": "page-1", "url": "https://shop.example", "title": "People"},
+            "metadata": {
+                "recordedAt": "2026-07-30T12:00:02Z",
+                "origin": "manual",
+                "sensitive": False,
+            },
+            "type": "assertion",
+            "expectation": {"kind": "page_text_contains", "expected": "John Snow"},
+        }
+    ]
+
+    saved = client.put(
+        f"/v1/workflows/{created['id']}",
+        headers={"Idempotency-Key": str(uuid4())},
+        json=payload,
+    )
+    loaded = client.get(f"/v1/workflows/{created['id']}")
+
+    assert saved.status_code == 200
+    assert saved.json()["schemaVersion"] == "1.5"
+    assert loaded.json()["steps"] == payload["workflow"]["steps"]
+
+
 def test_validation_errors_are_safe_and_never_use_422(client: TestClient) -> None:
     invalid_uuid = client.get("/v1/workflows/not-a-uuid")
     body = {"secretExtra": "do-not-echo"}
@@ -485,6 +520,14 @@ def test_openapi_makes_nested_workflows_canonical_and_deprecates_flat_aliases(
 ) -> None:
     contract = client.get("/openapi.json").json()
     paths = contract["paths"]
+
+    assert contract["x-contract-semantics"]["canonicalSchemaVersion"] == "1.5"
+    assert contract["components"]["schemas"]["Workflow"]["properties"]["schemaVersion"]["enum"] == [
+        "1.2",
+        "1.4",
+        "1.5",
+    ]
+    assert "PageTextContainsAssertionStep" in contract["components"]["schemas"]
 
     assert paths["/v1/namespaces"]["get"]["operationId"] == "listNamespaces"
     assert paths["/v1/namespaces"]["post"]["operationId"] == "createNamespace"

@@ -13,6 +13,13 @@ Failures use stable codes and structured attempts without locator or URL values.
 Assertion observations required by the interactive product remain isolated in the
 failure `detail`; background adapters must never forward that field.
 
+Targetless `page_text_contains` assertions snapshot the attached frame tree once and
+search each visible frame independently. Matching is case-insensitive substring
+containment after whitespace collapse. Hidden frame trees are skipped, while detached
+or uninspectable frames count as not found. Observed document text never leaves the
+frame evaluation and is never returned in failure details; a miss uses only the stable
+`page_text_missing` detail kind.
+
 The package does not own runner sequencing, events, recovery policy, Browserbase
 lifecycle, transport, persistence, screenshots, or user-facing diagnostics.
 

@@ -105,7 +105,7 @@ class WorkflowService:
 
         now = self.clock()
         workflow = Workflow(
-            schema_version="1.4",
+            schema_version="1.5",
             id=self.uuid_factory(),
             name="Untitled recording",
             status=WorkflowStatus.DRAFT,
@@ -350,10 +350,10 @@ class WorkflowService:
         finished_at: datetime | None = None,
         updated_at: datetime | None = None,
     ) -> Workflow:
-        document = incoming.model_dump(mode="python")
+        document = incoming.model_dump(mode="python", exclude_none=True)
         document.update(
             {
-                "schema_version": "1.4",
+                "schema_version": "1.5",
                 "id": current.id,
                 "status": status or current.status,
                 "revision": current.revision + 1,
@@ -379,7 +379,9 @@ class WorkflowService:
 
 def _revalidate_request(request: SaveWorkflowRequest) -> SaveWorkflowRequest:
     try:
-        return SaveWorkflowRequest.model_validate(request.model_dump(mode="python"))
+        return SaveWorkflowRequest.model_validate(
+            request.model_dump(mode="python", exclude_none=True)
+        )
     except ValidationError as error:
         raise ValidationFailedError from error
 

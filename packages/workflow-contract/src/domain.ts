@@ -221,10 +221,26 @@ export type GroupExistsAssertionStep = WorkflowStepBase & {
   waitAfter?: never;
 };
 
-export type AssertionStep = ElementAssertionStep | GroupExistsAssertionStep;
+export type PageTextContainsAssertionStep = WorkflowStepBase & {
+  type: "assertion";
+  expectation: { kind: "page_text_contains"; expected: string };
+  target?: never;
+  groupTarget?: never;
+  position?: never;
+  waitAfter?: never;
+};
+
+export type AssertionStep =
+  | ElementAssertionStep
+  | GroupExistsAssertionStep
+  | PageTextContainsAssertionStep;
 
 export function isGroupExistsAssertion(step: WorkflowStep): step is GroupExistsAssertionStep {
   return step.type === "assertion" && step.expectation.kind === "group_exists";
+}
+
+export function isPageTextContainsAssertion(step: WorkflowStep): step is PageTextContainsAssertionStep {
+  return step.type === "assertion" && step.expectation.kind === "page_text_contains";
 }
 
 export type ActionStep =
@@ -245,7 +261,7 @@ export type WorkflowActionType = ActionStep["type"];
 export type WorkflowStatus = "draft" | "complete";
 
 export type Workflow = {
-  schemaVersion: "1.4";
+  schemaVersion: "1.5";
   id: string;
   name: string;
   status: WorkflowStatus;
