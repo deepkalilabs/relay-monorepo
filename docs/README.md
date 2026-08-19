@@ -22,5 +22,10 @@ generic `plan.md`, `todo.md`, or runtime-generated context files as durable docu
 - [`agent-workflows/adr-before-push.md`](agent-workflows/adr-before-push.md) describes the
   architectural-review push gate.
 
+## Repository decisions
+
+- [`decisions/0001-manage-development-railway-infrastructure-as-code.md`](decisions/0001-manage-development-railway-infrastructure-as-code.md)
+  records the project-level Railway development topology and rollout boundary.
+
 Private execution state belongs in ignored `.agent/runtime/` or `.ralphex/` state, never
 in tracked planning documents.

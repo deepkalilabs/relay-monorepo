@@ -18,4 +18,4 @@ ENV PATH="/repo/apps/relay-api/.venv/bin:$PATH"
 
 EXPOSE 8000
 
-ENTRYPOINT ["scripts/start-api.sh"]
+CMD ["scripts/start-api.sh"]
