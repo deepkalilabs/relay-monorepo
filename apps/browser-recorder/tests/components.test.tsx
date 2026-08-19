@@ -5,7 +5,7 @@ import { BrowserPanel, type BrowserActions } from "@/features/browser";
 import { RecorderControls, stepFromRecordedAction } from "@/features/recorder";
 import { ReplayControls, ReplayFailurePanel } from "@/features/replay";
 import { WorkspaceNavbar } from "@/app/(product)/workflows/[workflowId]/edit/_components/WorkspaceNavbar";
-import { AssertionStepDialog, StepEditor, WorkflowTimeline } from "@/features/workflow-editor";
+import { AddAssertionDialog, AssertionStepDialog, StepEditor, WorkflowTimeline } from "@/features/workflow-editor";
 import type { WorkflowStep } from "@/shared/contracts/workflow/domain";
 import { TestBrowserPanel } from "./helpers/TestBrowserPanel";
 
@@ -49,7 +49,7 @@ describe("WorkflowTimeline", () => {
     expect(screen.getByRole("button", { name: /delete continue/i })).toBeInTheDocument();
   });
 
-  it("labels the add control and launches assertion picking directly", async () => {
+  it("labels the add control and requests assertion authoring", async () => {
     const user = userEvent.setup();
     const onAddAssertion = vi.fn();
     render(
@@ -98,6 +98,81 @@ describe("WorkflowTimeline", () => {
 });
 
 describe("Assertion step creation", () => {
+  it("chooses page text with the keyboard and emits a targetless assertion for the current page", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onInsert = vi.fn();
+    render(
+      <AddAssertionDialog
+        open
+        order={2}
+        page={{ pageId: "page-7", url: "https://example.com/winterfell", title: "Winterfell" }}
+        onClose={onClose}
+        onPickTarget={vi.fn()}
+        onInsert={onInsert}
+      />,
+    );
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: /page contains text/i })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog", { name: "Add page text assertion" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add assertion" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter text to match");
+
+    await user.clear(screen.getByLabelText("Step name"));
+    await user.type(screen.getByLabelText("Step name"), "Jon Snow is present");
+    await user.type(screen.getByLabelText("Expected text"), "Jon Snow");
+    await user.click(screen.getByRole("button", { name: "Add assertion" }));
+
+    expect(onInsert).toHaveBeenCalledWith(expect.objectContaining({
+      type: "assertion",
+      name: "Jon Snow is present",
+      order: 2,
+      page: { id: "page-7", url: "https://example.com/winterfell", title: "Winterfell" },
+      expectation: { kind: "page_text_contains", expected: "Jon Snow" },
+    }));
+    const inserted = onInsert.mock.calls[0]?.[0];
+    expect(inserted).not.toHaveProperty("target");
+    expect(inserted).not.toHaveProperty("groupTarget");
+    expect(inserted).not.toHaveProperty("position");
+    expect(inserted).not.toHaveProperty("waitAfter");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("hands element and group assertions to the existing picker and guards missing page context", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onPickTarget = vi.fn();
+    const { rerender } = render(
+      <AddAssertionDialog
+        open
+        order={0}
+        page={{ pageId: "page-1", url: "https://example.com", title: "Example" }}
+        onClose={onClose}
+        onPickTarget={onPickTarget}
+        onInsert={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /select element or group/i }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onPickTarget).toHaveBeenCalledOnce();
+
+    rerender(
+      <AddAssertionDialog
+        open
+        order={0}
+        page={null}
+        onClose={vi.fn()}
+        onPickTarget={vi.fn()}
+        onInsert={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /page contains text/i })).toBeDisabled();
+  });
+
   it("infers a text-containment assertion from captured visible text", async () => {
     const user = userEvent.setup();
     const onInsert = vi.fn();

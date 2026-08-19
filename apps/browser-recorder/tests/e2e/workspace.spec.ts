@@ -1,13 +1,40 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
+const localWorkspaceHeaders = { "x-workspace-key": "local" };
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("browser-replay.workspace", "local"));
+});
+
+async function installConnectedRecorderSocket(page: Page) {
+  const sentMessages: Array<{ type?: string }> = [];
+  await page.routeWebSocket("**/ws", (socket) => {
+    socket.onMessage((data) => {
+      const message = JSON.parse(String(data)) as { type?: string };
+      sentMessages.push(message);
+      if (message.type !== "client.hello") return;
+      [
+        { type: "server.ready", configured: true },
+        { type: "session.started", sessionId: "session-page-text", liveViewUrl: "about:blank", pageId: "page-winterfell" },
+        { type: "session.status", status: "recording" },
+        { type: "browser.page", pageId: "page-winterfell", url: "https://example.com/winterfell", title: "Winterfell" },
+      ].forEach((serverMessage, index) => {
+        socket.send(JSON.stringify({ sequence: index + 1, message: serverMessage }));
+      });
+    });
+  });
+  return sentMessages;
+}
+
 async function createDraft(request: APIRequestContext, name = "Untitled recording") {
-  const response = await request.post("/api/workflows");
+  const response = await request.post("/api/workflows", { headers: localWorkspaceHeaders });
   expect(response.status()).toBe(201);
   const workflow = await response.json();
   if (name !== workflow.name) {
     workflow.name = name;
     const saved = await request.put(`/api/workflows/${workflow.id}`, {
+      headers: localWorkspaceHeaders,
       data: { workflow, expectedRevision: workflow.revision },
     });
     expect(saved.status()).toBe(200);
@@ -64,6 +91,7 @@ test("creates, saves, refreshes, finishes, selects, and reopens a local workflow
     type: "click",
   }];
   const seeded = await request.put(`/api/workflows/${workflow.id}`, {
+    headers: localWorkspaceHeaders,
     data: { workflow, expectedRevision: workflow.revision },
   });
   expect(seeded.status()).toBe(200);
@@ -122,6 +150,7 @@ test("loads, edits, saves, and reloads both assertion kinds", async ({ page, req
     },
   ];
   const saved = await request.put(`/api/workflows/${workflow.id}`, {
+    headers: localWorkspaceHeaders,
     data: { workflow, expectedRevision: workflow.revision },
   });
   expect(saved.status()).toBe(200);
@@ -142,6 +171,57 @@ test("loads, edits, saves, and reloads both assertion kinds", async ({ page, req
   await expect(page.getByLabel("Expected text")).toHaveValue("Approved");
 });
 
+test("authors, saves, reloads, and edits a page text assertion", async ({ page, request }) => {
+  const socketMessages = await installConnectedRecorderSocket(page);
+  const workflow = await openDraft(page, request, "Winterfell checks");
+
+  const addAssertion = page.getByRole("button", { name: "Add assertion" });
+  await expect(addAssertion).toBeEnabled();
+  await addAssertion.click();
+  const chooser = page.getByRole("dialog", { name: "Add assertion" });
+  await expect(chooser.getByRole("button", { name: /page contains text/i })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /select element or group/i })).toBeVisible();
+  await expect(chooser).toHaveCSS("opacity", "1");
+  const chooserAccessibility = await new AxeBuilder({ page }).include("[role=dialog]").analyze();
+  expect(chooserAccessibility.violations).toEqual([]);
+
+  await page.keyboard.press("Tab");
+  await expect(chooser.getByRole("button", { name: /page contains text/i })).toBeFocused();
+  await page.keyboard.press("Enter");
+  const form = page.getByRole("dialog", { name: "Add page text assertion" });
+  await form.getByLabel("Step name").fill("Jon Snow is present");
+  await form.getByLabel("Expected text").fill("Jon Snow");
+  await form.getByRole("button", { name: "Add assertion" }).click();
+
+  await page.getByRole("button", { name: /Jon Snow is present 1 · assertion/ }).click();
+  await expect(page.getByLabel("Expected text")).toHaveValue("Jon Snow");
+  await expect(page.getByText("Locators", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Position", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Replay wait", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  const persisted = await request.get(`/api/workflows/${workflow.id}`, {
+    headers: localWorkspaceHeaders,
+  }).then((response) => response.json());
+  expect(persisted.steps[0]).toMatchObject({
+    page: { id: "page-winterfell", url: "https://example.com/winterfell", title: "Winterfell" },
+    expectation: { kind: "page_text_contains", expected: "Jon Snow" },
+  });
+  expect(persisted.steps[0]).not.toHaveProperty("target");
+
+  await page.reload();
+  await page.getByRole("button", { name: /Jon Snow is present 1 · assertion/ }).click();
+  await expect(page.getByLabel("Expected text")).toHaveValue("Jon Snow");
+  await page.getByLabel("Expected text").fill("Arya Stark");
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await addAssertion.click();
+  await page.getByRole("button", { name: /select element or group/i }).click();
+  await expect.poll(() => socketMessages.some((message) => message.type === "assertion.pick.start")).toBe(true);
+});
+
 test("back to Library discards changes since the last save", async ({ page, request }) => {
   const workflow = await openDraft(page, request, "Saved title");
   await page.getByRole("textbox", { name: /workflow name/i }).fill("Unsaved title");
@@ -152,9 +232,12 @@ test("back to Library discards changes since the last save", async ({ page, requ
 
 test("shows a revision conflict and can reload the saved version", async ({ page, request }) => {
   const workflow = await openDraft(page, request, "Original title");
-  const external = await request.get(`/api/workflows/${workflow.id}`).then((response) => response.json());
+  const external = await request.get(`/api/workflows/${workflow.id}`, {
+    headers: localWorkspaceHeaders,
+  }).then((response) => response.json());
   external.name = "Changed on disk";
   const externalSave = await request.put(`/api/workflows/${workflow.id}`, {
+    headers: localWorkspaceHeaders,
     data: { workflow: external, expectedRevision: external.revision },
   });
   expect(externalSave.status()).toBe(200);
@@ -190,6 +273,7 @@ test("blocks direct replay when a profile-bound workflow has no selected profile
     parameterBinding: { source: "profile", field: "identity.email" },
   }];
   const saved = await request.put(`/api/workflows/${workflow.id}`, {
+    headers: localWorkspaceHeaders,
     data: { workflow, expectedRevision: workflow.revision },
   });
   expect(saved.status()).toBe(200);
