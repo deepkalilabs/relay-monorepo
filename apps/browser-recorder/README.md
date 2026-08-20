@@ -172,10 +172,13 @@ sends HTTP Basic credentials only from the Node server, validates all remote res
 retries one transient failure with the same idempotency key. Profiles remain in the local
 filesystem repository. This repository does not implement the remote service or its database.
 
-The same three Relay variables enable background folder runs through the public
-`/v1/batches` and `/v1/artifacts` routes. Batch creation is attempted exactly once; polling
-and terminal screenshots are proxied through Browser Replay so Relay credentials never need
-to be configured separately.
+The same three Relay variables enable background folder runs. Namespace workspaces use
+durable namespace run-batch, history, detail, and screenshot routes; local workspaces keep
+the compatibility `/v1/batches` and `/v1/artifacts` routes. Batch creation is attempted
+exactly once. Browser Replay hydrates the 50 newest namespace runs after refresh, keeps
+repeated workflow executions distinct by run UUID, and proxies private screenshots so
+Relay credentials never reach the browser. Assertion details expose only name, kind,
+duration, and matched yes/no.
 
 ## Requirements
 

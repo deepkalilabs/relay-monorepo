@@ -42,6 +42,7 @@ const completedOutcome: BrowserbaseRunOutcome = {
     passedSteps: 1,
     skippedSteps: 0,
     durationMs: 10,
+    assertionResults: [],
   },
   cleanupStatus: "completed",
 };
@@ -655,6 +656,22 @@ describe("automation service contract", () => {
       });
       expect(terminal.json().runs[0].status).toBe("completed");
     });
+    await service.shutdown();
+  });
+
+  it("preserves a valid caller-supplied batch ID", async () => {
+    const suppliedId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const { service } = fixture();
+
+    const created = await service.app.inject({
+      method: "POST",
+      url: "/v1/batches",
+      headers: batchHeaders(),
+      payload: { batchId: suppliedId, runs: [{ workflow: batchWorkflow(1) }] },
+    });
+
+    expect(created.statusCode).toBe(202);
+    expect(created.json()).toEqual({ batchId: suppliedId, runCount: 1 });
     await service.shutdown();
   });
 

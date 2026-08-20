@@ -117,7 +117,7 @@ function RunCard({ run, onViewDetails }: RunCardProps) {
           />
         ) : null}
         {run.detail ? <p className={styles.failureDetail}>{run.detail}</p> : null}
-        {run.state === "failed" ? (
+        {run.state === "failed" || run.assertionResults.length > 0 ? (
           <button
             className={styles.viewDetails}
             type="button"
@@ -148,67 +148,15 @@ function RunCard({ run, onViewDetails }: RunCardProps) {
   );
 }
 
-const DEMO_SCREENSHOT: AutomationRunScreenshot = {
-  url: "/images/run-evidence-diffusion-cat.png",
-  width: 1280,
-  height: 720,
-};
-
-function CatEvidenceDemoCard() {
-  const [evidenceExpanded, setEvidenceExpanded] = useState(true);
-  const evidenceId = "cat-evidence-demo";
-  return (
-    <article className={`${styles.runCard} ${styles.demoRunCard}`} aria-label="Cat evidence demo: Demo · Not a real run">
-      <AutomationThumbnail variant="message" />
-      <div className={styles.runCopy}>
-        <div className={styles.runTitle}>
-          <div className={styles.demoRunTitle}>
-            <h4>Cat evidence demo</h4>
-            <span className={styles.demoRunBadge}>Demo · Not a real run</span>
-          </div>
-          <div className={styles.runActions}>
-            <span className={styles.runTimestamp}>Sample</span>
-            <button
-              className={styles.evidenceToggle}
-              type="button"
-              aria-label={`${evidenceExpanded ? "Hide" : "Show"} evidence for Cat evidence demo`}
-              aria-expanded={evidenceExpanded}
-              aria-controls={evidenceId}
-              onClick={() => setEvidenceExpanded((expanded) => !expanded)}
-            >
-              {evidenceExpanded ? "Hide evidence" : "Show evidence"}
-              {evidenceExpanded
-                ? <ChevronUp size={13} aria-hidden="true" />
-                : <ChevronDown size={13} aria-hidden="true" />}
-            </button>
-          </div>
-        </div>
-        <p className={styles.demoRunStatus}>Sample evidence card</p>
-      </div>
-      {evidenceExpanded ? (
-        <EvidencePanel
-          id={evidenceId}
-          label="Cat evidence demo"
-          screenshot={DEMO_SCREENSHOT}
-          alt="Diffusion cat sample evidence"
-          borderClassName={styles.demoEvidence}
-          metadata={<><span>Sample capture</span><span>Step 3 of 3</span></>}
-        />
-      ) : null}
-    </article>
-  );
-}
-
 interface RunSectionProps {
   id: string;
   title: string;
   runs: AutomationRun[];
   className?: string;
-  children?: ReactNode;
   onViewDetails: (runKey: string) => void;
 }
 
-function RunSection({ id, title, runs, className, children, onViewDetails }: RunSectionProps) {
+function RunSection({ id, title, runs, className, onViewDetails }: RunSectionProps) {
   return (
     <section className={className} aria-labelledby={id} aria-label={title}>
       <h3 id={id}>{title}</h3>
@@ -218,7 +166,6 @@ function RunSection({ id, title, runs, className, children, onViewDetails }: Run
             <RunCard run={run} onViewDetails={onViewDetails} key={run.id} />
           ))
           : <p className={styles.runEmpty}>No {title.toLocaleLowerCase()}.</p>}
-        {children}
       </div>
     </section>
   );
@@ -259,9 +206,7 @@ export function ActivityPane({ runs, onViewDetails }: ActivityPaneProps) {
           runs={completedRuns}
           className={styles.completedSection}
           onViewDetails={onViewDetails}
-        >
-          <CatEvidenceDemoCard />
-        </RunSection>
+        />
       </div>
     </section>
   );

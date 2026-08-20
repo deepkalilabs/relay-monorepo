@@ -5,6 +5,7 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { workflowListClient, type WorkflowListClient } from "@/shared/api/workflowListClient";
 import type { LibraryWorkflowItem } from "@/shared/contracts/workflow/library";
 import { AppSidebar } from "@/shared/ui/navigation";
+import { useOptionalWorkspace } from "@/shared/ui/workspace";
 import { ActivityPane } from "./components/ActivityPane";
 import { AddTaskDialog } from "./components/AddTaskDialog";
 import { CreateFolderDialog } from "./components/CreateFolderDialog";
@@ -59,7 +60,9 @@ function libraryTask(workflow: LibraryWorkflowItem) {
 
 export function AutomationsScreen({ client = workflowListClient }: AutomationsScreenProps) {
   const [state, dispatch] = useReducer(workspaceReducer, undefined, createInitialAutomationState);
-  const batch = useBackgroundBatch();
+  const workspace = useOptionalWorkspace();
+  const durableRuns = workspace?.active.source === "namespace";
+  const batch = useBackgroundBatch(durableRuns);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [detailRunKey, setDetailRunKey] = useState<string | null>(null);
@@ -93,24 +96,31 @@ export function AutomationsScreen({ client = workflowListClient }: AutomationsSc
   const runnableTasks = runnableTasksForFolder(state, selectedFolder.id);
   const inboxTasks = tasksForFolder(state, "inbox");
   const includesNestedFolders = state.folders.some((folder) => folder.parentId === selectedFolder.id);
+  const taskById = useMemo(() => new Map(state.tasks.map((task) => [task.id, task])), [state.tasks]);
   const runs = useMemo<AutomationRun[]>(() => batch.runs.map((run) => {
-    const task = state.tasks.find((candidate) => candidate.id === run.workflowId);
+    const task = taskById.get(run.workflowId);
     return {
-      id: run.workflowId,
+      id: run.id,
       taskId: run.workflowId,
       name: task?.name ?? "Workflow",
       state: run.status,
       currentStep: run.currentStep,
       totalSteps: run.totalSteps,
-      updated: "Just now",
+      updated: run.updatedAt ? updatedLabel(run.updatedAt) : "Just now",
       thumbnail: task?.thumbnail,
-      detail: run.error,
-      failedStep: run.status === "failed" && run.currentStep > 0 ? run.currentStep : undefined,
+      detail: run.error ?? (run.failureCode ? `Run ended with ${run.failureCode.replaceAll("_", " ")}.` : undefined),
+      failedStep: run.status === "failed"
+        ? run.failedStepIndex === undefined
+          ? run.currentStep || undefined
+          : run.failedStepIndex + 1
+        : undefined,
+      durationMs: run.durationMs,
+      assertionResults: run.assertionResults,
       screenshot: run.status === "failed" || run.status === "completed"
         ? run.screenshot
         : undefined,
     };
-  }), [batch.runs, state.tasks]);
+  }), [batch.runs, taskById]);
   const detailRun = runs.find((run) => run.id === detailRunKey);
   const batchAnnouncement = batch.status === "finished"
     ? `${runFolderName} run ${batch.succeeded ? "completed" : "failed"}.`
@@ -125,7 +135,9 @@ export function AutomationsScreen({ client = workflowListClient }: AutomationsSc
             <div><h1>Automations</h1><p>Organize and run workflows by folder.</p></div>
             <p className={styles.demoBanner}>
               <FlaskConical size={14} aria-hidden="true" />
-              POC: folders and run activity reset on refresh.
+              {durableRuns
+                ? "POC: folders reset on refresh; namespace run activity is saved."
+                : "POC: folders and local run activity reset on refresh."}
             </p>
           </header>
           {batch.error ? <p role="alert">{batch.error}</p> : null}

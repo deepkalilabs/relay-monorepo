@@ -610,35 +610,6 @@
   font-weight: 700;
 }
 
-.demoRunCard {
-  border-style: dashed;
-  background: color-mix(in srgb, var(--surface-muted) 55%, white);
-}
-
-.demoRunTitle {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.demoRunBadge {
-  width: max-content;
-  max-width: 100%;
-  padding: 2px 5px;
-  border-radius: 999px;
-  color: #624b16;
-  background: #fff3c7;
-  font-size: 9px;
-  font-weight: 750;
-}
-
-.demoRunStatus {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
-}
-
 .runProgress {
   width: 100%;
   height: 4px;
@@ -796,6 +767,33 @@
   color: var(--ink);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.assertionResults {
+  margin-top: 20px;
+}
+
+.assertionResults h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.assertionResults ul {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+
+.assertionResults li {
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-muted);
+  font-size: 11px;
 }
 
 .demoNotice {

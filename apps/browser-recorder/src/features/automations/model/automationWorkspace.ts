@@ -26,6 +26,16 @@ export interface AutomationRunScreenshot {
   height: number;
 }
 
+export interface AutomationAssertionResult {
+  stepId: string;
+  stepIndex: number;
+  stepName: string;
+  kind: "visible" | "text_contains" | "group_exists" | "page_text_contains";
+  matched: boolean;
+  durationMs: number;
+  failureCode?: "assertion_failed";
+}
+
 export interface AutomationRun {
   id: string;
   taskId: string;
@@ -37,6 +47,8 @@ export interface AutomationRun {
   thumbnail?: AutomationThumbnailVariant;
   detail?: string;
   failedStep?: number;
+  durationMs?: number;
+  assertionResults: AutomationAssertionResult[];
   screenshot?: AutomationRunScreenshot;
 }
 

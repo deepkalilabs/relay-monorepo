@@ -1,4 +1,7 @@
 import type {
+  AutomationAssertionResult,
+} from "@relay/automation-core";
+import type {
   BrowserbaseRunInput,
   BrowserbaseRunOutcome,
   BrowserbaseWorkerEvent,
@@ -25,6 +28,7 @@ export interface BatchRunSnapshot {
   failedStepIndex?: number;
   phase?: BatchFailurePhase;
   code?: BatchFailureCode;
+  assertionResults?: AutomationAssertionResult[];
   thumbnail?: ThumbnailReference;
 }
 
@@ -82,6 +86,7 @@ function snapshotRun(run: InternalBatchRun): BatchRunSnapshot {
     ...(run.failedStepIndex === undefined ? {} : { failedStepIndex: run.failedStepIndex }),
     ...(run.phase === undefined ? {} : { phase: run.phase }),
     ...(run.code === undefined ? {} : { code: run.code }),
+    ...(run.assertionResults === undefined ? {} : { assertionResults: run.assertionResults }),
     ...(run.thumbnail === undefined ? {} : { thumbnail: run.thumbnail }),
   };
 }
@@ -100,11 +105,12 @@ export class BatchCoordinator {
     this.terminalTtlMs = options.terminalTtlMs ?? defaultTerminalTtlMs;
   }
 
-  createBatch(inputs: readonly BatchRunInput[]): BatchCreation | undefined {
+  createBatch(inputs: readonly BatchRunInput[], requestedBatchId?: string): BatchCreation | undefined {
     this.cleanupExpired();
     if (this.stopping || this.batches.size >= this.maximumBatches) return undefined;
 
-    const batchId = this.options.randomUUID();
+    const batchId = requestedBatchId ?? this.options.randomUUID();
+    if (this.batches.has(batchId)) return undefined;
     const runs = inputs.map<InternalBatchRun>((input) => ({
       workflowId: input.workflowId,
       status: "queued",
@@ -196,6 +202,7 @@ export class BatchCoordinator {
     run.skippedSteps = outcome.result.skippedSteps;
     run.currentStep = outcome.result.passedSteps + outcome.result.skippedSteps;
     run.durationMs = outcome.result.durationMs;
+    run.assertionResults = outcome.result.assertionResults;
     if (outcome.result.status !== "failed") return;
     run.failedStepId = outcome.result.failedStepId;
     run.failedStepIndex = outcome.result.failedStepIndex;

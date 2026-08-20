@@ -23,6 +23,7 @@ const completedOutcome: BrowserbaseRunOutcome = {
     passedSteps: 1,
     skippedSteps: 0,
     durationMs: 10,
+    assertionResults: [],
   },
   cleanupStatus: "completed",
 };
