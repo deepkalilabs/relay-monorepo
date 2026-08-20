@@ -19,7 +19,7 @@ from relay_backend.controllers.workflows import router as workflow_router
 from relay_backend.data.database import Database
 from relay_backend.data.idempotency_repository import IdempotencyRepository
 from relay_backend.data.namespace_repository import NamespaceRepository
-from relay_backend.document_store import S3WorkflowDocumentStore
+from relay_backend.document_store import S3RunArtifactStore, S3WorkflowDocumentStore
 from relay_backend.errors import (
     AuthenticationError,
     AutomationUnavailableError,
@@ -35,13 +35,16 @@ from relay_backend.errors import (
 )
 from relay_backend.request_limits import RequestBodyLimitMiddleware
 from relay_backend.services.namespaces import NamespaceService
+from relay_backend.services.runs import RunService, RunTracker
 from relay_backend.services.workflows import WorkflowService
 from relay_backend.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
-def _create_document_store(settings: Settings) -> S3WorkflowDocumentStore:
+def _create_stores(
+    settings: Settings,
+) -> tuple[S3WorkflowDocumentStore, S3RunArtifactStore]:
     client = boto3.client(
         "s3",
         endpoint_url=settings.endpoint,
@@ -49,7 +52,10 @@ def _create_document_store(settings: Settings) -> S3WorkflowDocumentStore:
         aws_secret_access_key=settings.secret_access_key.get_secret_value(),
         region_name=settings.region,
     )
-    return S3WorkflowDocumentStore(client, bucket=settings.bucket)
+    return (
+        S3WorkflowDocumentStore(client, bucket=settings.bucket),
+        S3RunArtifactStore(client, bucket=settings.bucket),
+    )
 
 
 def create_app(
@@ -57,6 +63,8 @@ def create_app(
     settings: Settings | None = None,
     service: WorkflowService | None = None,
     namespace_service: NamespaceService | None = None,
+    run_service: RunService | None = None,
+    run_tracker: RunTracker | None = None,
     automation_client: httpx2.AsyncClient | None = None,
 ) -> FastAPI:
     @asynccontextmanager
@@ -72,18 +80,24 @@ def create_app(
         if service is not None:
             app.state.workflow_service = service
             app.state.namespace_service = namespace_service
+            app.state.run_service = run_service
+            app.state.run_tracker = run_tracker
             if app.state.namespace_service is None and hasattr(service, "database"):
                 app.state.namespace_service = NamespaceService(service.database)
+            if run_tracker is not None:
+                run_tracker.start()
             try:
                 yield
             finally:
+                if run_tracker is not None:
+                    await run_tracker.stop()
                 if owns_automation_client:
                     await app.state.automation_client.aclose()
             return
 
         database = Database(runtime_settings.database_url)
         database.open()
-        document_store = _create_document_store(runtime_settings)
+        document_store, artifact_store = _create_stores(runtime_settings)
         namespace_repository = NamespaceRepository()
         idempotency_repository = IdempotencyRepository()
         app.state.workflow_service = WorkflowService(
@@ -97,9 +111,22 @@ def create_app(
             repository=namespace_repository,
             idempotency_repository=idempotency_repository,
         )
+        app.state.run_service = RunService(
+            database,
+            app.state.workflow_service,
+            artifact_store,
+        )
+        app.state.run_tracker = RunTracker(
+            app.state.run_service,
+            app.state.automation_client,
+            artifact_store,
+            automation_service_url=str(runtime_settings.automation_service_url),
+        )
+        app.state.run_tracker.start()
         try:
             yield
         finally:
+            await app.state.run_tracker.stop()
             if owns_automation_client:
                 await app.state.automation_client.aclose()
             database.close()
@@ -211,7 +238,26 @@ def _install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unexpected_error(request: Request, error: Exception) -> JSONResponse:
-        if request.url.path.startswith("/v1/artifacts/"):
+        segments = request.url.path.split("/")
+        if (
+            len(segments) >= 5
+            and segments[1:3] == ["v1", "namespaces"]
+            and segments[4] == "run-batches"
+        ):
+            safe_path = "/v1/namespaces/{namespaceId}/run-batches"
+            if len(segments) == 6:
+                safe_path += "/{batchId}"
+        elif (
+            len(segments) >= 5
+            and segments[1:3] == ["v1", "namespaces"]
+            and segments[4] == "workflow-runs"
+        ):
+            safe_path = "/v1/namespaces/{namespaceId}/workflow-runs"
+            if len(segments) >= 6:
+                safe_path += "/{runId}"
+            if len(segments) == 7 and segments[6] == "screenshot":
+                safe_path += "/screenshot"
+        elif request.url.path.startswith("/v1/artifacts/"):
             safe_path = "/v1/artifacts/{artifactId}"
         elif request.url.path.startswith("/v1/batches/"):
             safe_path = "/v1/batches/{batchId}"

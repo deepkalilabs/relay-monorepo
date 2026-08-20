@@ -77,7 +77,8 @@ browser actions can have external side effects.
 ### In-memory batches
 
 `POST /v1/batches` accepts one to ten complete workflows without `startStepId` or
-`parameterValues`:
+`parameterValues`. Relay may also supply a UUID `batchId` for stable recovery
+correlation; duplicate supplied IDs are rejected:
 
 ```json
 {
@@ -94,7 +95,10 @@ share the same configured limit. Direct and Inngest requests still receive immed
 capacity rejection instead of joining the batch queue.
 
 `GET /v1/batches/{batchId}` returns workflow IDs, safe statuses, numeric progress,
-durations, fixed failure fields, and optional sensitive terminal `thumbnail` metadata.
+durations, fixed failure fields, safe results for every assertion that executed, and
+optional sensitive terminal `thumbnail` metadata. Assertion results contain only the
+step ID/index/name, assertion kind, matched boolean, duration, and optional fixed failure
+code. Disabled and unreached assertions are omitted.
 Completed and skipped steps both advance `currentStep`. Workflow documents, browser
 URLs, targets, values, provider identifiers, raw errors, image bytes, and local paths
 are never returned.
@@ -187,7 +191,7 @@ are outside this POC.
 | `AUTOMATION_STEP_TIMEOUT_MS` | `60000` | Step deadline; maximum 60 seconds |
 | `AUTOMATION_SHUTDOWN_GRACE_MS` | `30000` | Cleanup grace after shutdown cancellation |
 | `AUTOMATION_TRUST_PRIVATE_NETWORK` | unset | Set exactly `1` to permit screenshots on an explicitly trusted non-loopback private listener; does not relax the Inngest loopback rule |
-| `AUTOMATION_SCREENSHOTS` | `true` | Set to `false` to disable terminal capture and artifact serving; enabled mode requires loopback unless `AUTOMATION_TRUST_PRIVATE_NETWORK=1` |
+| `AUTOMATION_SCREENSHOTS` | `true` locally; `false` in the production image | Enable terminal capture and artifact serving only on loopback or with `AUTOMATION_TRUST_PRIVATE_NETWORK=1` on a trusted private listener |
 | `AUTOMATION_ARTIFACT_DIR` | repository `.relay/artifacts` | Persistent local screenshot directory |
 | `BROWSERBASE_API_KEY` | required | Browserbase credential |
 | `BROWSERBASE_PROJECT_ID` | unset | Optional project selection |

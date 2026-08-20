@@ -227,6 +227,10 @@ components:
       additionalProperties: false
       required: [runs]
       properties:
+        batchId:
+          type: string
+          format: uuid
+          description: Optional caller-owned correlation ID retained for durable tracking.
         runs:
           type: array
           minItems: 1
@@ -313,8 +317,40 @@ components:
           enum: [acting, asserting, settling, waiting]
         code:
           type: string
+          enum: [invalid_workflow, workflow_not_complete, invalid_start_step, no_enabled_steps, missing_parameter, invalid_parameter, unused_parameter, invalid_configuration, browserbase_unavailable, browser_unavailable, automation_failed, cancelled, timed_out]
+        assertionResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssertionRunResult"
         thumbnail:
           $ref: "#/components/schemas/TerminalThumbnail"
+    AssertionRunResult:
+      type: object
+      additionalProperties: false
+      required: [stepId, stepIndex, stepName, kind, matched, durationMs]
+      properties:
+        stepId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        stepIndex:
+          type: integer
+          minimum: 0
+        stepName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        kind:
+          type: string
+          enum: [visible, text_contains, group_exists, page_text_contains]
+        matched:
+          type: boolean
+        durationMs:
+          type: integer
+          minimum: 0
+        failureCode:
+          type: string
+          const: assertion_failed
     TerminalThumbnail:
       type: object
       additionalProperties: false

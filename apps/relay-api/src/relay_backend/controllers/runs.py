@@ -2,18 +2,26 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 import httpx2
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from relay_backend.auth import require_basic_auth
 from relay_backend.errors import AutomationUnavailableError
+from relay_backend.models.runs import (
+    CreateRunBatchRequest,
+    RunBatch,
+    RunBatchAccepted,
+    WorkflowRun,
+    WorkflowRunList,
+)
 from relay_backend.models.workflows import CreateBatchRequest, RunWorkflowByIdRequest, Workflow
 from relay_backend.request_limits import MAX_REQUEST_BYTES
+from relay_backend.services.runs import RunService
 from relay_backend.services.workflows import WorkflowService
 
 router = APIRouter(
@@ -44,6 +52,10 @@ def _workflow_service(request: Request) -> WorkflowService:
 
 def _automation_client(request: Request) -> httpx2.AsyncClient:
     return request.app.state.automation_client
+
+
+def _run_service(request: Request) -> RunService:
+    return request.app.state.run_service
 
 
 def _upstream_url(request: Request, path: str) -> str:
@@ -155,6 +167,138 @@ async def create_batch(request: Request, body: CreateBatchRequest) -> Response:
         json=body.model_dump(mode="json", by_alias=True),
     )
     return await _bounded_batch_response(stream_context)
+
+
+@router.post(
+    "/namespaces/{namespace_id}/run-batches",
+    response_model=RunBatchAccepted,
+    status_code=202,
+)
+async def create_durable_run_batch(
+    request: Request,
+    namespace_id: UUID,
+    body: CreateRunBatchRequest,
+) -> JSONResponse:
+    prepared = await run_in_threadpool(
+        _run_service(request).prepare_batch,
+        namespace_id,
+        body.workflow_ids,
+    )
+    upstream_body = {
+        "batchId": str(prepared.batch_id),
+        "runs": [
+            {
+                "workflow": workflow.model_dump(
+                    mode="json",
+                    by_alias=True,
+                    exclude_none=True,
+                )
+            }
+            for workflow in prepared.workflows
+        ],
+    }
+    try:
+        response = await _automation_client(request).post(
+            _upstream_url(request, "/v1/batches"),
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            json=upstream_body,
+        )
+    except httpx2.RequestError:
+        await run_in_threadpool(
+            _run_service(request).fail_batch,
+            prepared.batch_id,
+            owner=None,
+            code="submission_unknown",
+        )
+        raise AutomationUnavailableError from None
+    try:
+        accepted = RunBatchAccepted.model_validate(response.json())
+    except (TypeError, ValueError):
+        accepted = None
+    if (
+        response.status_code != 202
+        or accepted is None
+        or accepted.batch_id != prepared.batch_id
+        or accepted.run_count != len(prepared.workflows)
+    ):
+        await run_in_threadpool(
+            _run_service(request).fail_batch,
+            prepared.batch_id,
+            owner=None,
+            code="submission_failed",
+        )
+        raise AutomationUnavailableError
+    await run_in_threadpool(_run_service(request).mark_submitted, prepared.batch_id)
+    tracker = getattr(request.app.state, "run_tracker", None)
+    if tracker is not None:
+        tracker.wake()
+    return JSONResponse(
+        status_code=202,
+        content=accepted.model_dump(mode="json", by_alias=True),
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.get(
+    "/namespaces/{namespace_id}/run-batches/{batch_id}",
+    response_model=RunBatch,
+    response_model_exclude_none=True,
+)
+async def get_durable_run_batch(
+    request: Request,
+    namespace_id: UUID,
+    batch_id: UUID,
+) -> RunBatch:
+    return await run_in_threadpool(_run_service(request).get_batch, namespace_id, batch_id)
+
+
+@router.get(
+    "/namespaces/{namespace_id}/workflow-runs",
+    response_model=WorkflowRunList,
+    response_model_exclude_none=True,
+)
+async def list_durable_workflow_runs(
+    request: Request,
+    namespace_id: UUID,
+    workflow_id: Annotated[UUID | None, Query(alias="workflowId")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    cursor: Annotated[str | None, Query()] = None,
+) -> WorkflowRunList:
+    return await run_in_threadpool(
+        _run_service(request).list_runs,
+        namespace_id,
+        workflow_id=workflow_id,
+        limit=limit,
+        cursor=cursor,
+    )
+
+
+@router.get(
+    "/namespaces/{namespace_id}/workflow-runs/{run_id}",
+    response_model=WorkflowRun,
+    response_model_exclude_none=True,
+)
+async def get_durable_workflow_run(
+    request: Request,
+    namespace_id: UUID,
+    run_id: UUID,
+):
+    run = await run_in_threadpool(_run_service(request).get_run, namespace_id, run_id)
+    return run
+
+
+@router.get("/namespaces/{namespace_id}/workflow-runs/{run_id}/screenshot")
+async def get_durable_run_screenshot(
+    request: Request,
+    namespace_id: UUID,
+    run_id: UUID,
+) -> Response:
+    body = await run_in_threadpool(_run_service(request).get_screenshot, namespace_id, run_id)
+    return Response(
+        content=body,
+        media_type="image/webp",
+        headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.get("/batches/{batch_id}")

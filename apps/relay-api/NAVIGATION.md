@@ -351,7 +351,8 @@ apps/relay-api/
 │       ├── 0012-opaque-execution-schema-version.md
 │       ├── 0013-authenticated-workflow-run-gateway.md
 │       ├── 0014-trusted-private-network-screenshots.md
-│       └── 0015-provider-neutral-deployment-ownership.md
+│       ├── 0015-provider-neutral-deployment-ownership.md
+│       └── 0016-durable-namespace-workflow-runs.md
 ├── migrations/
 │   ├── env.py                        Alembic online/offline runtime configuration
 │   ├── script.py.mako                Migration revision template
@@ -359,7 +360,8 @@ apps/relay-api/
 │       ├── 0001_initial.py            Workflow and idempotency table definitions
 │       ├── 0002_add_namespace_and_record.py  Pre-existing namespace/record schema
 │       ├── 0003_add_workflow_document_key.py Object-key staged migration
-│       └── 0004_scope_workflows_to_namespaces.py Namespace ownership migration
+│       ├── 0004_scope_workflows_to_namespaces.py Namespace ownership migration
+│       └── 0005_add_durable_workflow_runs.py  Durable batches, runs, and assertions
 ├── src/
 │   └── relay_backend/
 │       ├── __init__.py                Package marker
@@ -414,12 +416,15 @@ are package markers and contain no runtime behavior.
 | [`src/relay_backend/errors.py`](src/relay_backend/errors.py) | Defines failures whose messages are safe at the HTTP boundary. |
 | [`src/relay_backend/controllers/namespaces.py`](src/relay_backend/controllers/namespaces.py) | Maps namespace and canonical scoped workflow operations to services. |
 | [`src/relay_backend/controllers/workflows.py`](src/relay_backend/controllers/workflows.py) | Maps deprecated flat workflow aliases to shared service behavior. |
+| [`src/relay_backend/controllers/runs.py`](src/relay_backend/controllers/runs.py) | Proxies compatibility execution and exposes durable namespace run operations. |
 | [`src/relay_backend/services/namespaces.py`](src/relay_backend/services/namespaces.py) | Implements namespace metadata, ordering, idempotency, and safe conflicts. |
 | [`src/relay_backend/services/workflows.py`](src/relay_backend/services/workflows.py) | Implements scoped and legacy lifecycle behavior with shared revision orchestration. |
+| [`src/relay_backend/services/runs.py`](src/relay_backend/services/runs.py) | Owns durable batch preparation, cursor history, tracking leases, and best-effort evidence transfer. |
 | [`src/relay_backend/data/database.py`](src/relay_backend/data/database.py) | Owns the Psycopg pool and transaction context manager. |
 | [`src/relay_backend/data/idempotency_repository.py`](src/relay_backend/data/idempotency_repository.py) | Claims and completes global idempotency records for every mutation. |
 | [`src/relay_backend/data/namespace_repository.py`](src/relay_backend/data/namespace_repository.py) | Executes namespace metadata, default resolution, and scope-check SQL. |
 | [`src/relay_backend/data/workflow_repository.py`](src/relay_backend/data/workflow_repository.py) | Executes scoped/global metadata, summary, object-pointer, backfill, and lock SQL. |
+| [`src/relay_backend/data/run_repository.py`](src/relay_backend/data/run_repository.py) | Executes namespace-scoped durable run, assertion, screenshot, pagination, and lease SQL. |
 | [`src/relay_backend/models/workflows.py`](src/relay_backend/models/workflows.py) | Defines strict camelCase API models, workflow-step variants, safe summaries, and canonical hashing. |
 | [`migrations/`](migrations/) | Configures Alembic and stores ordered, reversible database changes. |
 | [`tests/test_models.py`](tests/test_models.py) | Proves strict model behavior and OpenAPI schema compatibility. |
@@ -517,6 +522,9 @@ are package markers and contain no runtime behavior.
   capacity; shutdown aborts active work and starts no queued work.
 - Batch workflow inputs are released after their run settles. Terminal snapshots expire
   after one hour, no active batch is evicted, and all batch state is lost on restart.
+- Relay persists namespace batch/run indexes and safe executed-assertion outcomes,
+  resumes expired tracking leases after restart, never resubmits workflow execution,
+  and copies bounded terminal WebPs to private object storage before exposing evidence.
 
 ## Configuration, packaging, and local dependencies
 
@@ -640,6 +648,7 @@ agree with the code.
 - [`ADR 0013: Add an authenticated direct and batch workflow gateway`](docs/decisions/0013-authenticated-workflow-run-gateway.md)
 - [`ADR 0014: Permit screenshots on an explicitly trusted private listener`](docs/decisions/0014-trusted-private-network-screenshots.md)
 - [`ADR 0015: Keep deployment ownership provider-neutral`](docs/decisions/0015-provider-neutral-deployment-ownership.md)
+- [`ADR 0016: Persist namespace workflow runs and evidence`](docs/decisions/0016-durable-namespace-workflow-runs.md)
 
 When a decision changes, add a new sequential record that supersedes the older one.
 Preserve accepted historical records rather than rewriting or deleting their rationale.

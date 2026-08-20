@@ -11,7 +11,8 @@ const WEBP_BODY = Buffer.from(
 );
 
 async function createCompleteWorkflow(request: APIRequestContext, name: string) {
-  const created = await request.post("/api/workflows").then((response) => response.json());
+  const headers = { "x-workspace-key": "local" };
+  const created = await request.post("/api/workflows", { headers }).then((response) => response.json());
   created.name = name;
   created.steps = [{
     id: crypto.randomUUID(),
@@ -24,14 +25,17 @@ async function createCompleteWorkflow(request: APIRequestContext, name: string) 
     payload: { url: "https://example.com" },
   }];
   const saved = await request.put(`/api/workflows/${created.id}`, {
+    headers,
     data: { workflow: created, expectedRevision: created.revision },
   }).then((response) => response.json());
   return request.post(`/api/workflows/${created.id}/finish`, {
+    headers,
     data: { workflow: saved, expectedRevision: saved.revision },
   }).then((response) => response.json());
 }
 
 test("mirrors saved Library workflows in a read-only All workflows folder", async ({ page, request }) => {
+  await page.addInitScript(() => localStorage.setItem("browser-replay.workspace", "local"));
   const consoleProblems: string[] = [];
   const failedResources: string[] = [];
   page.on("console", (message) => {
@@ -45,7 +49,9 @@ test("mirrors saved Library workflows in a read-only All workflows folder", asyn
     if (response.status() >= 400) failedResources.push(`${response.status()} ${response.url()}`);
   });
 
-  const createResponse = await request.post("/api/workflows");
+  const createResponse = await request.post("/api/workflows", {
+    headers: { "x-workspace-key": "local" },
+  });
   const workflow = await createResponse.json();
   const workflowName = `Checkout flow ${workflow.id.slice(0, 8)}`;
   workflow.name = workflowName;
@@ -60,6 +66,7 @@ test("mirrors saved Library workflows in a read-only All workflows folder", asyn
     payload: { url: "https://example.com/checkout" },
   }];
   const saveResponse = await request.put(`/api/workflows/${workflow.id}`, {
+    headers: { "x-workspace-key": "local" },
     data: { workflow, expectedRevision: workflow.revision },
   });
   expect(saveResponse.status()).toBe(200);
@@ -78,9 +85,8 @@ test("mirrors saved Library workflows in a read-only All workflows folder", asyn
   await expect(workflowRow.getByRole("button")).toHaveCount(0);
   await expect(workflowRow.getByRole("link")).toHaveCount(0);
   const completedRuns = page.getByRole("region", { name: "Completed runs" });
-  await expect(completedRuns.getByRole("article")).toHaveCount(1);
-  await expect(completedRuns.getByText("Demo · Not a real run")).toBeVisible();
-  await expect(completedRuns.getByRole("img", { name: "Diffusion cat sample evidence" })).toBeVisible();
+  await expect(completedRuns.getByRole("article")).toHaveCount(0);
+  await expect(completedRuns.getByText("No completed runs.")).toBeVisible();
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
@@ -89,6 +95,7 @@ test("mirrors saved Library workflows in a read-only All workflows folder", asyn
 });
 
 test("runs two folder workflows through one stubbed background batch", async ({ page, request }) => {
+  await page.addInitScript(() => localStorage.setItem("browser-replay.workspace", "local"));
   const consoleProblems: string[] = [];
   const failedResources: string[] = [];
   page.on("console", (message) => {
@@ -124,10 +131,12 @@ test("runs two folder workflows through one stubbed background batch", async ({ 
       json: {
         batchId,
         runs: [first, second].map((workflow: { id: string }, index: number) => ({
+          id: workflow.id,
           workflowId: workflow.id,
           status: terminal ? "completed" : index === 0 ? "running" : "queued",
           currentStep: terminal ? 1 : index === 0 ? 1 : 0,
           totalSteps: 1,
+          assertionResults: [],
           ...(terminal ? {
             screenshot: {
               url: `/api/run-artifacts/${ARTIFACT_IDS[index]}`,
@@ -157,10 +166,9 @@ test("runs two folder workflows through one stubbed background batch", async ({ 
   await expect(page.getByText("Queued")).toBeVisible();
   const completedRuns = page.getByRole("region", { name: "Completed runs" });
   const completedCards = completedRuns.getByRole("article");
-  await expect(completedCards).toHaveCount(3, { timeout: 3_000 });
+  await expect(completedCards).toHaveCount(2, { timeout: 3_000 });
   await expect(completedRuns).toContainText(first.name);
   await expect(completedRuns).toContainText(second.name);
-  await expect(completedCards.nth(2)).toHaveAccessibleName("Cat evidence demo: Demo · Not a real run");
   const firstCompletedRun = completedRuns.getByRole("article").filter({ hasText: first.name });
   const evidenceToggle = firstCompletedRun.getByRole("button", {
     name: new RegExp(`evidence for ${first.name}$`),
@@ -181,16 +189,6 @@ test("runs two folder workflows through one stubbed background batch", async ({ 
   await page.keyboard.press("Space");
   await expect(evidenceToggle).toHaveAccessibleName(`Hide evidence for ${first.name}`);
   await expect(evidenceImage).toBeVisible();
-
-  const demoCard = completedCards.nth(2);
-  const demoToggle = demoCard.getByRole("button", { name: /evidence for Cat evidence demo$/ });
-  const demoImage = demoCard.getByRole("img", { name: "Diffusion cat sample evidence" });
-  await expect(demoImage).toBeVisible();
-  await demoToggle.click();
-  await expect(demoToggle).toHaveAccessibleName("Show evidence for Cat evidence demo");
-  await expect(demoImage).toHaveCount(0);
-  await demoToggle.click();
-  await expect(demoImage).toBeVisible();
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);

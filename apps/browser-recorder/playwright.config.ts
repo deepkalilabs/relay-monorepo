@@ -22,15 +22,19 @@ export default defineConfig({
   webServer: process.env.BROWSERBASE_E2E
     ? undefined
     : {
-        command: "npm run build && npm start",
+        command: "npx tsx server.ts",
         url: baseURL,
         reuseExistingServer: false,
         timeout: 120_000,
         env: {
           ...process.env,
+          NODE_ENV: "development",
           PORT: String(localPort),
           PROFILE_DATA_DIR: profileDataDir,
           WORKFLOW_DATA_DIR: workflowDataDir,
+          RELAY_API_BASE_URL: "",
+          RELAY_API_USERNAME: "",
+          RELAY_API_PASSWORD: "",
         },
       },
   projects: [
