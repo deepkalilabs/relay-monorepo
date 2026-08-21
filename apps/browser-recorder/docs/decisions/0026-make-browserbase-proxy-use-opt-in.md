@@ -1,4 +1,4 @@
-# ADR 0027: Make Browserbase proxy use opt-in
+# ADR 0026: Make Browserbase proxy use opt-in
 
 - Status: Accepted
 - Date: 2026-08-21
