@@ -8,7 +8,13 @@
 .traffic-lights span:nth-child(3) { background: #2cc55d; }
 .browser-tab { width: min(228px, 30vw); height: 35px; padding: 0 11px; display: flex; align-items: center; gap: 8px; color: #374151; background: white; border: 1px solid #e5eaf0; border-bottom-color: white; border-radius: 10px 10px 0 0; box-shadow: 0 -1px 2px rgb(15 23 42 / 2%); font-size: 11px; font-weight: 650; }
 .browser-tab span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.native-dropdown-toggle { min-width: 0; height: 32px; margin: 0 0 2px auto; padding: 0 9px; display: flex; align-items: center; gap: 6px; border: 1px solid #d7dee8; border-radius: 16px; color: #4b5565; background: white; box-shadow: 0 1px 2px rgb(15 23 42 / 4%); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; transition: color .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
+.proxy-checkbox { height: 32px; margin: 0 8px 2px auto; padding: 0 9px; flex: 0 0 auto; display: flex; align-items: center; gap: 6px; border: 1px solid #d7dee8; border-radius: 16px; color: #4b5565; background: white; box-shadow: 0 1px 2px rgb(15 23 42 / 4%); font-size: 10px; font-weight: 700; cursor: pointer; }
+.proxy-checkbox:hover:has(input:not(:disabled)) { color: var(--ink); border-color: #b8c5d6; background: #f8fafc; }
+.proxy-checkbox:focus-within { border-color: #7fa3ee; box-shadow: 0 0 0 3px rgb(47 111 235 / 16%); }
+.proxy-checkbox:has(input:disabled) { cursor: not-allowed; opacity: .48; }
+.proxy-checkbox input { width: 14px; height: 14px; margin: 0; accent-color: var(--primary); cursor: inherit; }
+.proxy-checkbox-label { white-space: nowrap; }
+.native-dropdown-toggle { min-width: 0; height: 32px; margin: 0 0 2px; padding: 0 9px; display: flex; align-items: center; gap: 6px; border: 1px solid #d7dee8; border-radius: 16px; color: #4b5565; background: white; box-shadow: 0 1px 2px rgb(15 23 42 / 4%); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; transition: color .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
 .native-dropdown-toggle:hover:not(:disabled) { color: var(--ink); border-color: #b8c5d6; background: #f8fafc; }
 .native-dropdown-toggle:focus-visible { outline: 0; border-color: #7fa3ee; box-shadow: 0 0 0 3px rgb(47 111 235 / 16%); }
 .native-dropdown-toggle[aria-checked="true"] { color: #174ea6; border-color: #a9c1f4; background: var(--primary-soft); }
@@ -35,11 +41,12 @@
   .browser-navigation { grid-template-columns: 88px minmax(0, 1fr) auto; gap: 8px; padding-inline: 9px; }
   .browser-navigation .recorder-status-label { display: none; }
   .browser-navigation .recorder-controls { gap: 6px; }
+  .proxy-checkbox { padding-inline: 7px; }
   .native-dropdown-detail { display: none; }
 }
 @container (max-width: 420px) {
   .traffic-lights { width: 62px; }
-  .browser-tab { width: min(210px, calc(100% - 104px)); }
+  .browser-tab { min-width: 0; width: auto; flex: 1; }
   .browser-navigation { grid-template-columns: 78px minmax(0, 1fr) auto; gap: 6px; }
   .browser-nav-controls button { width: 26px; }
   .browser-navigation .recorder-status { display: none; }

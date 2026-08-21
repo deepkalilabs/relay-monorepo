@@ -35,6 +35,8 @@ interface TestBrowserPanelProps {
   datePicker?: DatePickerState | null;
   selectPicker?: SelectPickerState | null;
   nativeSelects?: boolean;
+  useProxy?: boolean;
+  proxySelectionEnabled?: boolean;
   captchaStatus?: CaptchaStatus | null;
   onBack: () => void;
   onForward: () => void;
@@ -49,6 +51,7 @@ interface TestBrowserPanelProps {
   onSelectPickerSelect?: (requestId: string, value: string) => void;
   onSelectPickerDismiss?: (requestId: string) => void;
   onNativeSelectsChange?: (enabled: boolean) => void;
+  onUseProxyChange?: (enabled: boolean) => void;
   onCaptchaContinue?: () => void;
   replayStatus?: ReplayStatus;
   replayCurrentIndex?: number;
@@ -82,6 +85,8 @@ export function TestBrowserPanel({
   datePicker = null,
   selectPicker = null,
   nativeSelects = false,
+  useProxy = false,
+  proxySelectionEnabled = true,
   captchaStatus = null,
   onBack,
   onForward,
@@ -96,6 +101,7 @@ export function TestBrowserPanel({
   onSelectPickerSelect = noop,
   onSelectPickerDismiss = noop,
   onNativeSelectsChange = noop,
+  onUseProxyChange = noop,
   onCaptchaContinue = noop,
   replayStatus = "idle",
   replayCurrentIndex = 0,
@@ -128,6 +134,7 @@ export function TestBrowserPanel({
     selectPickerOption: onSelectPickerSelect,
     dismissSelectPicker: onSelectPickerDismiss,
     setNativeSelects: onNativeSelectsChange,
+    setUseProxy: onUseProxyChange,
     continueAfterCaptcha: onCaptchaContinue,
   };
 
@@ -147,6 +154,8 @@ export function TestBrowserPanel({
           && transportStatus === "connected"
           && !["preparing", "running", "pausing", "paused", "stopping"].includes(replayStatus),
         ),
+        useProxy,
+        proxySelectionEnabled,
         preparing: status === "starting" || replayStatus === "preparing",
         reconnecting: status === "reconnecting",
         restoreFocusAfterCaptcha: ["recording", "reconnecting"].includes(status),

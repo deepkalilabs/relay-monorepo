@@ -168,10 +168,11 @@ describe("useRecorderSession", () => {
     });
   });
 
-  it("keeps native dropdown mode for the task and includes it in new sessions", () => {
+  it("keeps browser preferences for the task and includes them in new sessions", () => {
     const { result } = renderHook(() => useRecorderSession({ onSessionStarted: vi.fn(), onReplaySessionStarted: vi.fn(), onStartUrl: vi.fn(), onStepRecorded: vi.fn() }));
     const requestId = "c7daf0b9-d92a-44db-9967-db33d1516976";
     expect(result.current.nativeSelects).toBe(false);
+    expect(result.current.useProxy).toBe(false);
 
     act(() => socket.onMessage?.({
       type: "select.picker.open",
@@ -183,13 +184,15 @@ describe("useRecorderSession", () => {
       viewport: { width: 1280, height: 720 },
     }));
     act(() => result.current.setNativeSelects(true));
+    act(() => result.current.setUseProxy(true));
 
     expect(result.current.nativeSelects).toBe(true);
+    expect(result.current.useProxy).toBe(true);
     expect(result.current.selectPicker).toBeNull();
     expect(socket.send).toHaveBeenCalledWith({ type: "select.native.set", enabled: true });
 
     act(() => result.current.startRecording());
-    expect(socket.send).toHaveBeenLastCalledWith({ type: "session.start", nativeSelects: true });
+    expect(socket.send).toHaveBeenLastCalledWith({ type: "session.start", nativeSelects: true, useProxy: true });
   });
 
   it("waits for the browser session to stop before resolving a finish request", async () => {
@@ -294,11 +297,11 @@ describe("useRecorderSession", () => {
     expect(result.current.liveViewUrl).toBe("https://example.com/live");
   });
 
-  it("starts replay with the current native dropdown preference", () => {
+  it("starts replay with the current browser preferences", () => {
     const { result } = renderHook(() => useRecorderSession({ onSessionStarted: vi.fn(), onReplaySessionStarted: vi.fn(), onStartUrl: vi.fn(), onStepRecorded: vi.fn() }));
     const workflow = createWorkflow("session-1");
 
     act(() => result.current.startReplay(workflow));
-    expect(socket.send).toHaveBeenLastCalledWith({ type: "replay.start", workflow, startStepId: undefined, nativeSelects: false });
+    expect(socket.send).toHaveBeenLastCalledWith({ type: "replay.start", workflow, startStepId: undefined, nativeSelects: false, useProxy: false });
   });
 });
