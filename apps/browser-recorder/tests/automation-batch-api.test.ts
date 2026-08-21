@@ -742,6 +742,23 @@ describe("automation batch HTTP API", () => {
     expect(await local.json()).toEqual({ runs: [] });
   });
 
+  it("does not expose the unused unscoped workflow-run screenshot alias", async () => {
+    const namespaceId = crypto.randomUUID();
+    const runId = crypto.randomUUID();
+    const getRunScreenshot = vi.fn();
+    const url = await api(
+      workflowRepository([]),
+      automationService({ getRunScreenshot }),
+    );
+
+    const response = await fetch(`${url}api/workflow-runs/${runId}/screenshot`, {
+      headers: { "x-workspace-key": namespaceId },
+    });
+
+    expect(response.status).toBe(405);
+    expect(getRunScreenshot).not.toHaveBeenCalled();
+  });
+
   it("proxies an authenticated bounded WebP with safe browser headers", async () => {
     const artifactId = crypto.randomUUID();
     const screenshot = Buffer.from("private screenshot pixels");

@@ -11,7 +11,7 @@ from psycopg.types.json import Jsonb
 from relay_backend.data.database import Database
 from relay_backend.data.run_repository import RunRepository
 from relay_backend.errors import ScopedWorkflowNotFoundError
-from relay_backend.models.runs import AssertionRunResult, RunnerRunSnapshot
+from relay_backend.models.runs import AssertionRunResult, RunnerBatchSnapshot, RunnerRunSnapshot
 from relay_backend.services.runs import RunService
 from tests.conftest import DATABASE_URL
 
@@ -214,6 +214,107 @@ def test_run_repository_leases_are_recoverable_after_expiry() -> None:
             )
             == batch_id
         )
+
+
+def test_stale_lease_owner_cannot_apply_runner_snapshot() -> None:
+    namespace_id, workflow_id = seed_workflow()
+    repository = RunRepository()
+    database = Database(DATABASE_URL)
+    database.open()
+    batch_id = uuid4()
+    run_id = uuid4()
+    now = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    first_owner = uuid4()
+    restarted_owner = uuid4()
+
+    try:
+        with database.transaction() as connection:
+            repository.create_batch(
+                connection,
+                namespace_id=namespace_id,
+                batch_id=batch_id,
+                runs=[(run_id, workflow_id, 3)],
+                now=now,
+            )
+            repository.mark_submitted(connection, batch_id=batch_id, now=now)
+            assert repository.claim_due_batch(connection, owner=first_owner, now=now) == batch_id
+        with database.transaction() as connection:
+            assert (
+                repository.claim_due_batch(
+                    connection,
+                    owner=restarted_owner,
+                    now=now + timedelta(seconds=31),
+                )
+                == batch_id
+            )
+
+        service = RunService(
+            database,
+            object(),
+            repository=repository,
+            clock=lambda: now + timedelta(seconds=31),
+        )
+        service.apply_snapshot(
+            owner=first_owner,
+            batch_id=batch_id,
+            snapshot=RunnerBatchSnapshot(
+                batchId=batch_id,
+                runs=[RunnerRunSnapshot(workflowId=workflow_id, status="running")],
+            ),
+            screenshots={},
+            retry_pending_screenshots=False,
+        )
+        run = service.get_run(namespace_id, run_id)
+    finally:
+        database.close()
+
+    assert run.status == "queued"
+
+
+def test_stale_lease_owner_cannot_fail_reclaimed_runs() -> None:
+    namespace_id, workflow_id = seed_workflow()
+    repository = RunRepository()
+    database = Database(DATABASE_URL)
+    database.open()
+    batch_id = uuid4()
+    run_id = uuid4()
+    now = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    first_owner = uuid4()
+    restarted_owner = uuid4()
+
+    try:
+        with database.transaction() as connection:
+            repository.create_batch(
+                connection,
+                namespace_id=namespace_id,
+                batch_id=batch_id,
+                runs=[(run_id, workflow_id, 3)],
+                now=now,
+            )
+            repository.mark_submitted(connection, batch_id=batch_id, now=now)
+            assert repository.claim_due_batch(connection, owner=first_owner, now=now) == batch_id
+        with database.transaction() as connection:
+            assert (
+                repository.claim_due_batch(
+                    connection,
+                    owner=restarted_owner,
+                    now=now + timedelta(seconds=31),
+                )
+                == batch_id
+            )
+
+        service = RunService(
+            database,
+            object(),
+            repository=repository,
+            clock=lambda: now + timedelta(seconds=31),
+        )
+        service.fail_batch(batch_id, owner=first_owner, code="execution_lost")
+        run = service.get_run(namespace_id, run_id)
+    finally:
+        database.close()
+
+    assert run.status == "queued"
 
 
 def test_run_history_is_namespace_scoped_and_cursor_paginated() -> None:

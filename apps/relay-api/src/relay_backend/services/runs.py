@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import logging
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -22,11 +23,17 @@ from relay_backend.errors import (
 )
 from relay_backend.models.runs import (
     RunBatch,
-    RunBatchAccepted,
     RunnerBatchSnapshot,
     WorkflowRunList,
 )
 from relay_backend.models.workflows import Workflow, WorkflowStatus
+from relay_backend.request_limits import MAX_REQUEST_BYTES
+
+logger = logging.getLogger(__name__)
+
+
+class _ResponseTooLargeError(Exception):
+    pass
 
 
 class ScopedWorkflowReader(Protocol):
@@ -37,10 +44,6 @@ class ScopedWorkflowReader(Protocol):
 class PreparedRunBatch:
     batch_id: UUID
     workflows: list[Workflow]
-
-    @property
-    def accepted(self) -> RunBatchAccepted:
-        return RunBatchAccepted(batch_id=self.batch_id, run_count=len(self.workflows))
 
 
 class RunService:
@@ -158,6 +161,14 @@ class RunService:
     ) -> None:
         now = self.clock()
         with self.database.transaction() as connection:
+            namespace_id = self.repository.lock_batch_for_update(
+                connection,
+                batch_id=batch_id,
+                owner=owner,
+                now=now,
+            )
+            if namespace_id is None:
+                return
             for run_snapshot in snapshot.runs:
                 self.repository.apply_runner_snapshot(
                     connection,
@@ -184,7 +195,7 @@ class RunService:
                     )
                     try:
                         object_key = self.artifact_store.put(
-                            namespace_id=self._batch_namespace(connection, batch_id),
+                            namespace_id=namespace_id,
                             run_id=run_id,
                             body=screenshot,
                         )
@@ -227,23 +238,23 @@ class RunService:
 
     def fail_batch(self, batch_id: UUID, *, owner: UUID | None, code: str) -> None:
         with self.database.transaction() as connection:
+            now = self.clock()
+            if (
+                self.repository.lock_batch_for_update(
+                    connection,
+                    batch_id=batch_id,
+                    owner=owner,
+                    now=now,
+                )
+                is None
+            ):
+                return
             self.repository.fail_batch(
                 connection,
                 batch_id=batch_id,
-                owner=owner,
                 code=code,
-                now=self.clock(),
+                now=now,
             )
-
-    @staticmethod
-    def _batch_namespace(connection, batch_id: UUID) -> UUID:
-        row = connection.execute(
-            "SELECT namespace_id FROM workflow_run_batches WHERE id = %s",
-            (batch_id,),
-        ).fetchone()
-        if row is None:
-            raise ValidationFailedError("The run batch no longer exists.")
-        return row["namespace_id"]
 
 
 class RunTracker:
@@ -256,13 +267,14 @@ class RunTracker:
         automation_service_url: str,
         clock=None,
         owner: UUID | None = None,
+        error_delay_seconds: float = 1,
     ) -> None:
         self.run_service = run_service
         self.automation_client = automation_client
-        self.artifact_store = artifact_store
         self.automation_service_url = automation_service_url.rstrip("/") + "/"
         self.clock = clock or (lambda: datetime.now(UTC))
         self.owner = owner or uuid4()
+        self.error_delay_seconds = error_delay_seconds
         self._task: asyncio.Task | None = None
         self._wake = asyncio.Event()
         if self.run_service.artifact_store is None:
@@ -273,14 +285,15 @@ class RunTracker:
         if batch_id is None:
             return False
         try:
-            response = await self.automation_client.get(
+            status_code, _headers, body = await self._get_bounded(
                 urljoin(self.automation_service_url, f"v1/batches/{batch_id}"),
-                headers={"Accept": "application/json"},
+                accept="application/json",
+                max_bytes=MAX_REQUEST_BYTES,
             )
         except httpx2.RequestError:
             await self._release_without_snapshot(batch_id)
             return True
-        if response.status_code == 404:
+        except _ResponseTooLargeError:
             await asyncio.to_thread(
                 self.run_service.fail_batch,
                 batch_id,
@@ -288,11 +301,19 @@ class RunTracker:
                 code="execution_lost",
             )
             return True
-        if response.status_code != 200:
+        if status_code == 404:
+            await asyncio.to_thread(
+                self.run_service.fail_batch,
+                batch_id,
+                owner=self.owner,
+                code="execution_lost",
+            )
+            return True
+        if status_code != 200:
             await self._release_without_snapshot(batch_id)
             return True
         try:
-            snapshot = RunnerBatchSnapshot.model_validate(response.json())
+            snapshot = RunnerBatchSnapshot.model_validate_json(body)
         except (ValueError, TypeError):
             await asyncio.to_thread(
                 self.run_service.fail_batch,
@@ -333,20 +354,16 @@ class RunTracker:
             if run.status not in {"completed", "failed"} or run.thumbnail is None:
                 continue
             try:
-                artifact = await self.automation_client.get(
+                status_code, headers, body = await self._get_bounded(
                     urljoin(self.automation_service_url, run.thumbnail.url.lstrip("/")),
-                    headers={"Accept": "image/webp"},
+                    accept="image/webp",
+                    max_bytes=MAX_RUN_SCREENSHOT_BYTES,
                 )
-                media_type = artifact.headers.get("content-type", "").split(";", 1)[0]
-                if (
-                    artifact.status_code != 200
-                    or media_type != "image/webp"
-                    or not artifact.content
-                    or len(artifact.content) > MAX_RUN_SCREENSHOT_BYTES
-                ):
+                media_type = headers.get("content-type", "").split(";", 1)[0]
+                if status_code != 200 or media_type != "image/webp" or not body:
                     raise ValueError
-                screenshots[run.workflow_id] = artifact.content
-            except (httpx2.RequestError, ValueError):
+                screenshots[run.workflow_id] = body
+            except (httpx2.RequestError, _ResponseTooLargeError, ValueError):
                 screenshots[run.workflow_id] = None
                 retry_pending = retry_pending or run.thumbnail.expires_at > now
 
@@ -359,6 +376,29 @@ class RunTracker:
             retry_pending_screenshots=retry_pending,
         )
         return True
+
+    async def _get_bounded(
+        self,
+        url: str,
+        *,
+        accept: str,
+        max_bytes: int,
+    ) -> tuple[int, httpx2.Headers, bytes]:
+        async with self.automation_client.stream(
+            "GET",
+            url,
+            headers={"Accept": accept},
+        ) as response:
+            if response.is_stream_consumed:
+                if len(response.content) > max_bytes:
+                    raise _ResponseTooLargeError
+                return response.status_code, response.headers, response.content
+            body = bytearray()
+            async for chunk in response.aiter_raw():
+                if len(body) + len(chunk) > max_bytes:
+                    raise _ResponseTooLargeError
+                body.extend(chunk)
+            return response.status_code, response.headers, bytes(body)
 
     def poll_once_sync(self) -> bool:
         return asyncio.run(self.poll_once())
@@ -389,12 +429,22 @@ class RunTracker:
 
     async def _run(self) -> None:
         while True:
-            worked = await self.poll_once()
+            try:
+                worked = await self.poll_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception as error:
+                logger.error("Run tracker iteration failed: %s", type(error).__name__)
+                await self._wait(self.error_delay_seconds)
+                continue
             if worked:
                 continue
-            self._wake.clear()
-            with suppress(TimeoutError):
-                await asyncio.wait_for(self._wake.wait(), timeout=1)
+            await self._wait(1)
+
+    async def _wait(self, timeout: float) -> None:
+        self._wake.clear()
+        with suppress(TimeoutError):
+            await asyncio.wait_for(self._wake.wait(), timeout=timeout)
 
 
 def _encode_cursor(run) -> str:

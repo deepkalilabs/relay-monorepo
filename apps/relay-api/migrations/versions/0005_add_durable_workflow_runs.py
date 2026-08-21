@@ -38,7 +38,6 @@ def upgrade() -> None:
             sa.ForeignKey("namespaces.id", ondelete="RESTRICT"),
             nullable=False,
         ),
-        sa.Column("runner_batch_id", postgresql.UUID(as_uuid=True), nullable=False, unique=True),
         sa.Column("status", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
@@ -66,12 +65,6 @@ def upgrade() -> None:
             "batch_id",
             postgresql.UUID(as_uuid=True),
             sa.ForeignKey("workflow_run_batches.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "namespace_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("namespaces.id", ondelete="RESTRICT"),
             nullable=False,
         ),
         sa.Column(
@@ -125,11 +118,6 @@ def upgrade() -> None:
         ),
     )
     op.create_index(
-        "ix_workflow_runs_namespace_created",
-        "workflow_runs",
-        ["namespace_id", sa.text("created_at DESC"), sa.text("id DESC")],
-    )
-    op.create_index(
         "ix_workflow_runs_workflow_created",
         "workflow_runs",
         ["workflow_id", sa.text("created_at DESC"), sa.text("id DESC")],
@@ -172,7 +160,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("workflow_run_assertion_results")
     op.drop_index("ix_workflow_runs_workflow_created", table_name="workflow_runs")
-    op.drop_index("ix_workflow_runs_namespace_created", table_name="workflow_runs")
     op.drop_table("workflow_runs")
     op.drop_index("ix_workflow_run_batches_namespace_created", table_name="workflow_run_batches")
     op.drop_index("ix_workflow_run_batches_tracking", table_name="workflow_run_batches")

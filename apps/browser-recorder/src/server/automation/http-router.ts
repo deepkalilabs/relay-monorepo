@@ -1,5 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
+import {
+  AssertionResultSchema,
+  BatchAcceptedSchema,
+  BatchSnapshotSchema,
+  RunFailureCodeSchema,
+  RunHistorySchema,
+  RunnerFailureCodeSchema,
+} from "@/shared/contracts/automation-run";
 import type { Workflow } from "@/shared/contracts/workflow/domain";
 import {
   WorkspaceSelectionError,
@@ -17,40 +25,6 @@ const CreateRequest = z.object({
   ({ workflowIds }) => new Set(workflowIds).size === workflowIds.length,
   "Workflow IDs must be unique.",
 );
-const CreateResponse = z.object({
-  batchId: z.uuid(),
-  runCount: z.number().int().min(1).max(10),
-}).strict();
-const AssertionResult = z.object({
-  stepId: z.string().min(1).max(200),
-  stepIndex: z.number().int().nonnegative(),
-  stepName: z.string().min(1).max(200),
-  kind: z.enum(["visible", "text_contains", "group_exists", "page_text_contains"]),
-  matched: z.boolean(),
-  durationMs: z.number().int().nonnegative(),
-  failureCode: z.literal("assertion_failed").optional(),
-}).strict();
-const RunnerFailureCode = z.enum([
-  "invalid_workflow",
-  "workflow_not_complete",
-  "invalid_start_step",
-  "no_enabled_steps",
-  "missing_parameter",
-  "invalid_parameter",
-  "unused_parameter",
-  "invalid_configuration",
-  "browserbase_unavailable",
-  "browser_unavailable",
-  "automation_failed",
-  "cancelled",
-  "timed_out",
-]);
-const DurableFailureCode = z.enum([
-  ...RunnerFailureCode.options,
-  "submission_unknown",
-  "submission_failed",
-  "execution_lost",
-]);
 const RelayArtifactUrl = z.string().regex(/^\/v1\/artifacts\/[0-9a-fA-F-]{36}$/).refine(
   (url) => z.uuid().safeParse(url.slice("/v1/artifacts/".length)).success,
   "Artifact URL must contain a UUID.",
@@ -73,8 +47,8 @@ const RelayRunSnapshot = z.object({
   failedStepId: z.string().optional(),
   failedStepIndex: z.number().int().nonnegative().optional(),
   phase: z.enum(["acting", "asserting", "settling", "waiting"]).optional(),
-  code: RunnerFailureCode.optional(),
-  assertionResults: z.array(AssertionResult).optional(),
+  code: RunnerFailureCodeSchema.optional(),
+  assertionResults: z.array(AssertionResultSchema).optional(),
   thumbnail: RelayThumbnail.optional(),
 }).refine((run) => {
   if (run.currentStep === undefined || run.totalSteps === undefined) {
@@ -87,7 +61,7 @@ const RelayRunSnapshot = z.object({
 const RelayPollResponse = z.object({
   batchId: z.uuid(),
   runs: z.array(RelayRunSnapshot).min(1).max(10),
-}).strict().transform(({ batchId, runs }) => ({
+}).strict().transform(({ batchId, runs }) => BatchSnapshotSchema.parse({
   batchId,
   runs: runs.map((run) => ({
     id: run.workflowId,
@@ -131,12 +105,12 @@ const DurableRun = z.object({
   failedStepId: z.string().optional(),
   failedStepIndex: z.number().int().nonnegative().optional(),
   phase: z.enum(["acting", "asserting", "settling", "waiting"]).optional(),
-  failureCode: DurableFailureCode.optional(),
+  failureCode: RunFailureCodeSchema.optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   startedAt: z.iso.datetime().optional(),
   completedAt: z.iso.datetime().optional(),
-  assertionResults: z.array(AssertionResult),
+  assertionResults: z.array(AssertionResultSchema),
   screenshot: DurableScreenshot.optional(),
 }).strict()
   .refine((run) => run.currentStep <= run.totalSteps || run.totalSteps === 0)
@@ -170,18 +144,21 @@ function browserRun(run: z.infer<typeof DurableRun>) {
 const DurableBatchResponse = z.object({
   batchId: z.uuid(),
   runs: z.array(DurableRun).min(1).max(10),
-}).strict().transform(({ batchId, runs }) => ({ batchId, runs: runs.map(browserRun) }));
+}).strict().transform(({ batchId, runs }) => BatchSnapshotSchema.parse({
+  batchId,
+  runs: runs.map(browserRun),
+}));
 const DurableRunList = z.object({
   runs: z.array(DurableRun),
   nextCursor: z.string().min(1).optional(),
-}).strict().transform(({ runs, nextCursor }) => ({
+}).strict().transform(({ runs, nextCursor }) => RunHistorySchema.parse({
   runs: runs.map(browserRun),
   ...(nextCursor ? { nextCursor } : {}),
 }));
 
-type CreateResult = z.infer<typeof CreateResponse>;
-type PollResult = z.infer<typeof RelayPollResponse>;
-type RunListResult = z.infer<typeof DurableRunList>;
+type CreateResult = z.infer<typeof BatchAcceptedSchema>;
+type PollResult = z.infer<typeof BatchSnapshotSchema>;
+type RunListResult = z.infer<typeof RunHistorySchema>;
 
 function assertScreenshotNamespace(
   result: { runs: Array<{ screenshot?: { url: string } }> },
@@ -331,7 +308,7 @@ export function createAutomationBatchService(
           : { runs: workflows.map((workflow) => ({ workflow })) }),
       },
       202,
-      CreateResponse,
+      BatchAcceptedSchema,
     ),
     get: async (batchId, namespaceId) => {
       const result = await request(
@@ -480,16 +457,6 @@ export async function handleAutomationBatchApi(
     }
     if (isHistoryRoute && segments.length === 2 && request.method === "GET") {
       sendJson(response, 200, await service.list(selectedNamespace(request)!));
-      return true;
-    }
-    if (isHistoryRoute && segments.length === 4 && segments[3] === "screenshot"
-      && request.method === "GET") {
-      const runId = z.uuid().safeParse(segments[2]);
-      const namespaceId = selectedNamespace(request);
-      if (!runId.success || namespaceId === undefined) {
-        throw new SafeBatchError(400, "The run screenshot request is invalid.");
-      }
-      sendArtifact(response, await service.getRunScreenshot(namespaceId, runId.data));
       return true;
     }
     if (isHistoryRoute) {
