@@ -3,7 +3,7 @@ import type { WebSocket } from "ws";
 import { z } from "zod";
 import { RecordedActionSchema, type RecordedAction } from "@/shared/contracts/recording/recorded-action";
 import type { ServerMessage, SequencedServerMessage } from "@/shared/contracts/protocol";
-import type { BrowserProvider } from "@/server/infrastructure/browser/types";
+import type { BrowserProvider, BrowserSessionOptions } from "@/server/infrastructure/browser/types";
 import { RECORDER_BINDING, RECORDER_SCRIPT } from "./injected";
 import { ActionDeduplicator } from "./deduplicate";
 import {
@@ -326,7 +326,7 @@ export class RecordingRuntime {
     );
   }
 
-  async start(options: { timeoutSeconds: number; region: "us-west-2" | "us-east-1" | "eu-central-1" | "ap-southeast-1" }): Promise<void> {
+  async start(options: BrowserSessionOptions): Promise<void> {
     if (this.sessionId) return;
     this.emit({ type: "session.status", status: "starting" });
     this.mode = "recording";
@@ -946,7 +946,7 @@ export class RecordingRuntime {
   async startReplay(
     workflow: Workflow,
     startStepId: string | undefined,
-    options: { timeoutSeconds: number; region: "us-west-2" | "us-east-1" | "eu-central-1" | "ap-southeast-1" },
+    options: BrowserSessionOptions,
   ): Promise<void> {
     if (this.activePageCaptchaLocked()) return;
     if (this.replayEngine || this.mode === "replay") throw new Error("A replay is already running.");

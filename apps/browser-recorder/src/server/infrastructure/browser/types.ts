@@ -3,6 +3,7 @@ import type { Browser, BrowserContext } from "playwright-core";
 export interface BrowserSessionOptions {
   timeoutSeconds: number;
   region: "us-west-2" | "us-east-1" | "eu-central-1" | "ap-southeast-1";
+  useProxy: boolean;
 }
 
 export interface CreatedBrowserSession {

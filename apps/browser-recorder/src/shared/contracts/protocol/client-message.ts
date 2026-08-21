@@ -8,8 +8,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     clientId: z.string().uuid(),
     lastSequence: z.number().int().nonnegative(),
   }),
-  z.object({ type: z.literal("session.start"), nativeSelects: z.boolean() }),
-  z.object({ type: z.literal("session.restart"), nativeSelects: z.boolean() }),
+  z.object({ type: z.literal("session.start"), nativeSelects: z.boolean(), useProxy: z.boolean() }),
+  z.object({ type: z.literal("session.restart"), nativeSelects: z.boolean(), useProxy: z.boolean() }),
   z.object({ type: z.literal("session.stop") }),
   z.object({ type: z.literal("popup.switch"), pageId: z.string() }),
   z.object({
@@ -40,6 +40,7 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     workflow: CompatibleWorkflowSchema,
     startStepId: z.string().optional(),
     nativeSelects: z.boolean(),
+    useProxy: z.boolean(),
   }),
   z.object({ type: z.literal("replay.pause") }),
   z.object({ type: z.literal("replay.resume") }),

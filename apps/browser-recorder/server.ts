@@ -101,7 +101,7 @@ webSockets.on("connection", (socket: WebSocket) => {
         sendUnsequencedError("Send client.hello before recorder commands.");
       } else if (message.type === "session.start") {
         await runtime.setNativeSelects(message.nativeSelects);
-        await runtime.start({ timeoutSeconds, region });
+        await runtime.start({ timeoutSeconds, region, useProxy: message.useProxy });
       } else if (message.type === "session.restart") {
         const clientId = runtime.clientId;
         await runtime.release();
@@ -111,7 +111,7 @@ webSockets.on("connection", (socket: WebSocket) => {
         runtime.attach(socket, nextSequence);
         runtime.emit({ type: "server.ready", configured: true });
         await runtime.setNativeSelects(message.nativeSelects);
-        await runtime.start({ timeoutSeconds, region });
+        await runtime.start({ timeoutSeconds, region, useProxy: message.useProxy });
       } else if (message.type === "session.stop") {
         const clientId = runtime.clientId;
         await runtime.release();
@@ -148,7 +148,11 @@ webSockets.on("connection", (socket: WebSocket) => {
         runtime.continueAfterCaptcha(message.pageId);
       } else if (message.type === "replay.start") {
         await runtime.setNativeSelects(message.nativeSelects);
-        await runtime.startReplay(message.workflow, message.startStepId, { timeoutSeconds, region });
+        await runtime.startReplay(message.workflow, message.startStepId, {
+          timeoutSeconds,
+          region,
+          useProxy: message.useProxy,
+        });
       } else if (message.type === "replay.pause") {
         runtime.pauseReplay();
       } else if (message.type === "replay.resume") {

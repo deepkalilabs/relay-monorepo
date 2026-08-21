@@ -562,6 +562,7 @@ describe("BrowserPanel", () => {
       selectPickerOption: vi.fn(),
       dismissSelectPicker: vi.fn(),
       setNativeSelects: vi.fn(),
+      setUseProxy: vi.fn(),
       continueAfterCaptcha: vi.fn(),
     };
     const { container, unmount } = render(
@@ -575,6 +576,8 @@ describe("BrowserPanel", () => {
           captchaStatus: null,
           nativeSelects: false,
           nativeSelectsEnabled: false,
+          useProxy: false,
+          proxySelectionEnabled: false,
           preparing: false,
           reconnecting: false,
           restoreFocusAfterCaptcha: false,
@@ -781,6 +784,46 @@ describe("BrowserPanel", () => {
     view.rerender(<TestBrowserPanel {...props} nativeSelects />);
     expect(panel.getByRole("switch", { name: "Use native dropdowns" })).toHaveAttribute("aria-checked", "true");
     expect(panel.getByRole("switch", { name: "Use native dropdowns" })).toHaveTextContent("On");
+  });
+
+  it("offers an opt-in proxy checkbox only before a browser session starts", async () => {
+    const user = userEvent.setup();
+    const onUseProxyChange = vi.fn();
+    const props = {
+      status: "idle" as const,
+      transportStatus: "connected" as const,
+      startedAt: null,
+      liveViewUrl: null,
+      page: null,
+      error: null,
+      navigationError: null,
+      navigationPending: false,
+      popup: null,
+      onBack: vi.fn(),
+      onForward: vi.fn(),
+      onNavigate: vi.fn(),
+      onReload: vi.fn(),
+      onStart: vi.fn(),
+      onStop: vi.fn(),
+      onRetry: vi.fn(),
+      onSwitchPopup: vi.fn(),
+      onUseProxyChange,
+    };
+    const view = render(<TestBrowserPanel {...props} useProxy={false} proxySelectionEnabled />);
+    const panel = within(view.container);
+    const checkbox = panel.getByRole("checkbox", { name: "Use proxy" });
+
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).toBeEnabled();
+    expect(checkbox).toHaveAccessibleDescription("Route this session through Browserbase's managed proxy.");
+    await user.click(checkbox);
+    expect(onUseProxyChange).toHaveBeenCalledWith(true);
+
+    view.rerender(
+      <TestBrowserPanel {...props} useProxy liveViewUrl="https://example.com/live" proxySelectionEnabled={false} />,
+    );
+    expect(panel.getByRole("checkbox", { name: "Use proxy" })).toBeChecked();
+    expect(panel.getByRole("checkbox", { name: "Use proxy" })).toBeDisabled();
   });
 
   it("returns to recorder controls when an incremental replay completes", () => {

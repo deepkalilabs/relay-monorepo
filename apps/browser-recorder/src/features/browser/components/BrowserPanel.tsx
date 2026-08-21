@@ -92,6 +92,7 @@ export function BrowserPanel({
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const captchaTitleId = useId();
   const captchaDescriptionId = useId();
+  const proxyDescriptionId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const liveViewRef = useRef<HTMLIFrameElement>(null);
   const captchaContinueRef = useRef<HTMLButtonElement>(null);
@@ -140,6 +141,22 @@ export function BrowserPanel({
             <Globe2 size={15} />
             <span>{tabTitle}</span>
           </div>
+          <label
+            className="proxy-checkbox"
+            title="Route this session through Browserbase's managed proxy"
+          >
+            <input
+              type="checkbox"
+              checked={model.useProxy}
+              disabled={!model.proxySelectionEnabled}
+              aria-describedby={proxyDescriptionId}
+              onChange={(event) => actions.setUseProxy(event.currentTarget.checked)}
+            />
+            <span className="proxy-checkbox-label">Use proxy</span>
+          </label>
+          <span className="sr-only" id={proxyDescriptionId}>
+            Route this session through Browserbase&apos;s managed proxy.
+          </span>
           <button
             className="native-dropdown-toggle"
             type="button"
