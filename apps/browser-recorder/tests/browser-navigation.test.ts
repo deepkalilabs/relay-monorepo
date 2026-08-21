@@ -66,7 +66,7 @@ describe("browser navigation", () => {
       releaseSession: vi.fn(async () => undefined),
     };
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
 
     const startedIndex = runtime.buffer.findIndex((item) => item.message.type === "session.started");
     const startUrl = runtime.buffer.find((item) => item.message.type === "recording.startUrl");
@@ -112,7 +112,7 @@ describe("browser navigation", () => {
     const inactiveRequestId = crypto.randomUUID();
     await expect(runtime.startAssertionPick(inactiveRequestId)).resolves.toBeUndefined();
     expect(runtime.buffer.at(-1)?.message).toEqual({ type: "assertion.pick.cancelled", requestId: inactiveRequestId });
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
     const staleRequestId = crypto.randomUUID();
@@ -202,7 +202,7 @@ describe("browser navigation", () => {
         releaseSession: vi.fn(async () => undefined),
       };
       const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-      await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+      await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
       runtime.buffer.splice(0);
 
       const click = {
@@ -321,7 +321,7 @@ describe("browser navigation", () => {
         releaseSession: vi.fn(async () => undefined),
       };
       const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-      await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+      await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
       runtime.buffer.splice(0);
 
       handlers.get("console")?.({ text: () => "browserbase-solving-finished" });
@@ -416,7 +416,7 @@ describe("browser navigation", () => {
         releaseSession: vi.fn(async () => undefined),
       };
       const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-      await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+      await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
       runtime.buffer.splice(0);
 
       onPopup?.(popupPage);
@@ -481,7 +481,7 @@ describe("browser navigation", () => {
     });
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
 
-    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     handlers.get("console")?.({ text: () => "browserbase-solving-started" });
     expect(captchaLogs().at(-1)).toMatchObject({
       sessionId: "session",
@@ -520,7 +520,7 @@ describe("browser navigation", () => {
       releaseSession: vi.fn(async () => undefined),
     };
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
     currentUrl = "https://example.com/form";
@@ -562,7 +562,7 @@ describe("browser navigation", () => {
       releaseSession: vi.fn(async () => undefined),
     };
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
     await binding?.({ page, frame: mainFrame }, { type: "not-an-action" });
@@ -642,7 +642,7 @@ describe("browser navigation", () => {
       releaseSession: vi.fn(async () => undefined),
     };
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
     await binding?.({ page, frame: mainFrame }, {
@@ -713,7 +713,7 @@ describe("browser navigation", () => {
       releaseSession: vi.fn(async () => undefined),
     };
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     mainFrame.evaluate.mockClear();
     runtime.buffer.splice(0);
 
@@ -808,7 +808,7 @@ describe("browser navigation", () => {
       releaseSession: vi.fn(async () => undefined),
     };
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
     handlers.get("framenavigated")?.({});
@@ -862,7 +862,7 @@ describe("browser navigation", () => {
       payload: { url: "https://example.com" },
     });
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     await vi.waitFor(() => expect(runtime.buffer.some((item) => item.message.type === "replay.status" && item.message.status === "completed")).toBe(true));
     runtime.buffer.splice(0);
 
@@ -942,15 +942,15 @@ describe("browser navigation", () => {
       type: "click",
     });
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
     const invalidWorkflow = createWorkflow("session-1");
-    await expect(runtime.startReplay(invalidWorkflow, undefined, { timeoutSeconds: 120, region: "us-west-2" })).rejects.toThrow(/no enabled steps/i);
+    await expect(runtime.startReplay(invalidWorkflow, undefined, { timeoutSeconds: 120, region: "us-west-2", useProxy: false })).rejects.toThrow(/no enabled steps/i);
     expect(provider.createSession).toHaveBeenCalledOnce();
     expect(provider.releaseSession).not.toHaveBeenCalled();
 
-    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     await vi.waitFor(() => expect(runtime.buffer.some((item) => item.message.type === "replay.status" && item.message.status === "completed")).toBe(true));
 
     expect(provider.createSession).toHaveBeenCalledTimes(2);
@@ -974,7 +974,7 @@ describe("browser navigation", () => {
     }
 
     locator.click.mockRejectedValueOnce(new Error("Button unavailable"));
-    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     await vi.waitFor(() => expect(runtime.buffer.some((item) => item.message.type === "replay.step" && item.message.status === "failed")).toBe(true));
     await runtime.stopReplay();
 
@@ -1025,10 +1025,10 @@ describe("browser navigation", () => {
       payload: { url: "https://example.com" },
     });
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
-    await expect(runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2" })).rejects.toThrow(/browserbase connection failed/i);
+    await expect(runtime.startReplay(workflow, undefined, { timeoutSeconds: 120, region: "us-west-2", useProxy: false })).rejects.toThrow(/browserbase connection failed/i);
 
     expect(closeBrowser).toHaveBeenCalledOnce();
     expect(provider.releaseSession).toHaveBeenNthCalledWith(1, "session-1");
@@ -1068,11 +1068,11 @@ describe("browser navigation", () => {
     expect(ClientMessageSchema.safeParse({ type: "select.native.set", enabled: "yes" }).success).toBe(false);
     expect(ClientMessageSchema.safeParse({ type: "captcha.continue", pageId: "page-1" }).success).toBe(true);
     expect(ClientMessageSchema.safeParse({ type: "captcha.continue", pageId: "" }).success).toBe(false);
-    expect(ClientMessageSchema.safeParse({ type: "session.start", nativeSelects: false }).success).toBe(true);
-    expect(ClientMessageSchema.safeParse({ type: "session.start" }).success).toBe(false);
+    expect(ClientMessageSchema.safeParse({ type: "session.start", nativeSelects: false, useProxy: false }).success).toBe(true);
+    expect(ClientMessageSchema.safeParse({ type: "session.start", nativeSelects: false }).success).toBe(false);
     const workflow = createWorkflow("session");
-    expect(ClientMessageSchema.safeParse({ type: "replay.start", workflow, nativeSelects: true }).success).toBe(true);
-    expect(ClientMessageSchema.safeParse({ type: "replay.start", workflow }).success).toBe(false);
+    expect(ClientMessageSchema.safeParse({ type: "replay.start", workflow, nativeSelects: true, useProxy: true }).success).toBe(true);
+    expect(ClientMessageSchema.safeParse({ type: "replay.start", workflow, nativeSelects: true }).success).toBe(false);
   });
 
   it("runs commands against the active page and emits recoverable page state", async () => {
@@ -1106,7 +1106,7 @@ describe("browser navigation", () => {
       releaseSession: vi.fn(async () => undefined),
     };
     const runtime = new RecordingRuntime(crypto.randomUUID(), provider, vi.fn());
-    await runtime.start({ timeoutSeconds: 120, region: "us-west-2" });
+    await runtime.start({ timeoutSeconds: 120, region: "us-west-2", useProxy: false });
     runtime.buffer.splice(0);
 
     await runtime.navigate("example.com");

@@ -40,6 +40,7 @@ export function useRecorderSession({ onSessionStarted, onReplaySessionStarted, o
   const [selectPicker, setSelectPicker] = useState<SelectPickerState | null>(null);
   const [assertionPick, setAssertionPick] = useState<AssertionPickState | null>(null);
   const [nativeSelects, setNativeSelectsState] = useState(false);
+  const [useProxy, setUseProxy] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [replayStatus, setReplayStatus] = useState<ReplayStatus>("idle");
   const [replayRunId, setReplayRunId] = useState<string | null>(null);
@@ -332,6 +333,7 @@ export function useRecorderSession({ onSessionStarted, onReplaySessionStarted, o
   const sessionStartCommand = (): ClientMessage => ({
     type: status === "error" || liveViewUrl ? "session.restart" : "session.start",
     nativeSelects,
+    useProxy,
   });
 
   const startRecording = () => {
@@ -380,7 +382,7 @@ export function useRecorderSession({ onSessionStarted, onReplaySessionStarted, o
     setPopup(null);
     setDatePicker(null);
     setSelectPicker(null);
-    if (!send({ type: "replay.start", workflow, startStepId, nativeSelects })) {
+    if (!send({ type: "replay.start", workflow, startStepId, nativeSelects, useProxy })) {
       setReplayStatus("stopped");
       setError("The recorder connection is unavailable. Wait a moment and try again.");
     }
@@ -452,6 +454,7 @@ export function useRecorderSession({ onSessionStarted, onReplaySessionStarted, o
     replayStatus,
     replayTotalSteps,
     nativeSelects,
+    useProxy,
     selectPicker,
     reportError: setError,
     clearError: () => setError(null),
@@ -462,6 +465,7 @@ export function useRecorderSession({ onSessionStarted, onReplaySessionStarted, o
     selectPickerOption,
     dismissSelectPicker,
     setNativeSelects,
+    setUseProxy,
     startAssertionPick,
     cancelAssertionPick,
     startReplay,

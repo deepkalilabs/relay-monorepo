@@ -20,14 +20,14 @@ describe("BrowserbaseProvider", () => {
     sdk.update.mockReset();
   });
 
-  it("enables residential proxies and automatic CAPTCHA solving for Browserbase sessions", async () => {
+  it.each([false, true])("passes useProxy=%s to Browserbase session creation", async (useProxy) => {
     sdk.create.mockResolvedValue({ id: "session", connectUrl: "ws://example.com" });
     const provider = new BrowserbaseProvider("api-key", "project");
 
-    await provider.createSession({ timeoutSeconds: 120, region: "us-west-2" });
+    await provider.createSession({ timeoutSeconds: 120, region: "us-west-2", useProxy });
 
     expect(sdk.create).toHaveBeenCalledWith(expect.objectContaining({
-      proxies: true,
+      proxies: useProxy,
       browserSettings: expect.objectContaining({
         recordSession: false,
         logSession: false,
