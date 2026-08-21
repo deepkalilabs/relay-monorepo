@@ -83,6 +83,20 @@ function workflowRepository(workflows: Workflow[]): WorkflowRepository {
   };
 }
 
+function automationService(
+  overrides: Partial<AutomationBatchService> = {},
+): AutomationBatchService {
+  const unsupported = async (): Promise<never> => { throw new Error("Not used by this test."); };
+  return {
+    create: unsupported,
+    get: unsupported,
+    list: async () => ({ runs: [] }),
+    getArtifact: unsupported,
+    getRunScreenshot: unsupported,
+    ...overrides,
+  };
+}
+
 async function api(
   repository: WorkflowRepository,
   service: AutomationBatchService | null,
@@ -159,6 +173,130 @@ describe("Relay batch service", () => {
       method: "GET",
       url: `/v1/batches/${created.batchId}`,
       authorization: `Basic ${Buffer.from("relay-user:relay-secret").toString("base64")}`,
+    });
+  });
+
+  it("uses durable Relay routes for namespace batches and history", async () => {
+    const workflow = completeWorkflow();
+    const namespaceId = crypto.randomUUID();
+    const batchId = crypto.randomUUID();
+    const runId = crypto.randomUUID();
+    const requests: Array<{ method?: string; url?: string; body?: unknown }> = [];
+    const durableRun = {
+      id: runId,
+      batchId,
+      workflowId: workflow.id,
+      workflowRevision: 3,
+      status: "completed",
+      currentStep: 1,
+      totalSteps: 1,
+      durationMs: 18,
+      createdAt: "2026-08-20T01:00:00.000Z",
+      updatedAt: "2026-08-20T01:00:18.000Z",
+      assertionResults: [{
+        stepId: "assert-visible",
+        stepIndex: 0,
+        stepName: "Checkout is visible",
+        kind: "visible",
+        matched: true,
+        durationMs: 7,
+      }],
+      screenshot: {
+        url: `/v1/namespaces/${namespaceId}/workflow-runs/${runId}/screenshot`,
+        width: 480,
+        height: 300,
+      },
+    };
+    const baseUrl = await listen((request, response) => {
+      void readJson(request).catch(() => undefined).then((body) => {
+        requests.push({ method: request.method, url: request.url, body });
+        response.setHeader("content-type", "application/json");
+        if (request.method === "POST") {
+          response.statusCode = 202;
+          response.end(JSON.stringify({ batchId, runCount: 1 }));
+        } else {
+          response.statusCode = 200;
+          response.end(JSON.stringify(request.url?.endsWith("/workflow-runs")
+            ? { runs: [durableRun] }
+            : { batchId, runs: [durableRun] }));
+        }
+      });
+    });
+    const client = createAutomationBatchService({
+      RELAY_API_BASE_URL: baseUrl,
+      RELAY_API_USERNAME: "relay-user",
+      RELAY_API_PASSWORD: "relay-secret",
+    })!;
+
+    const created = await client.create([workflow], namespaceId);
+    const batch = await client.get(batchId, namespaceId);
+    const history = await client.list(namespaceId);
+
+    expect(created).toEqual({ batchId, runCount: 1 });
+    expect(batch.runs[0]).toMatchObject({
+      id: runId,
+      workflowId: workflow.id,
+      assertionResults: [{ matched: true }],
+      screenshot: { url: `/api/namespaces/${namespaceId}/workflow-runs/${runId}/screenshot` },
+    });
+    expect(history.runs).toHaveLength(1);
+    expect(requests).toEqual([
+      {
+        method: "POST",
+        url: `/v1/namespaces/${namespaceId}/run-batches`,
+        body: { workflowIds: [workflow.id] },
+      },
+      {
+        method: "GET",
+        url: `/v1/namespaces/${namespaceId}/run-batches/${batchId}`,
+        body: undefined,
+      },
+      {
+        method: "GET",
+        url: `/v1/namespaces/${namespaceId}/workflow-runs`,
+        body: undefined,
+      },
+    ]);
+  });
+
+  it("rejects durable screenshot metadata from another namespace", async () => {
+    const workflow = completeWorkflow();
+    const namespaceId = crypto.randomUUID();
+    const otherNamespaceId = crypto.randomUUID();
+    const batchId = crypto.randomUUID();
+    const runId = crypto.randomUUID();
+    const baseUrl = await listen((_request, response) => {
+      response.statusCode = 200;
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({
+        runs: [{
+          id: runId,
+          batchId,
+          workflowId: workflow.id,
+          workflowRevision: 1,
+          status: "completed",
+          currentStep: 1,
+          totalSteps: 1,
+          createdAt: "2026-08-20T01:00:00.000Z",
+          updatedAt: "2026-08-20T01:00:01.000Z",
+          assertionResults: [],
+          screenshot: {
+            url: `/v1/namespaces/${otherNamespaceId}/workflow-runs/${runId}/screenshot`,
+            width: 480,
+            height: 300,
+          },
+        }],
+      }));
+    });
+    const client = createAutomationBatchService({
+      RELAY_API_BASE_URL: baseUrl,
+      RELAY_API_USERNAME: "relay-user",
+      RELAY_API_PASSWORD: "relay-secret",
+    })!;
+
+    await expect(client.list(namespaceId)).rejects.toMatchObject({
+      status: 502,
+      message: "The automation service returned an invalid response.",
     });
   });
 
@@ -255,12 +393,21 @@ describe("Relay batch service", () => {
     await expect(client.get(batchId)).resolves.toEqual({
       batchId,
       runs: [
-        { workflowId: first.id, status: "queued", currentStep: 0, totalSteps: 0 },
         {
+          id: first.id,
+          workflowId: first.id,
+          status: "queued",
+          currentStep: 0,
+          totalSteps: 0,
+          assertionResults: [],
+        },
+        {
+          id: second.id,
           workflowId: second.id,
           status: "failed",
           currentStep: 2,
           totalSteps: 3,
+          assertionResults: [],
           screenshot: {
             url: `/api/run-artifacts/${artifactId}`,
             width: 480,
@@ -438,7 +585,7 @@ describe("automation batch HTTP API", () => {
     const second = completeWorkflow();
     const batchId = crypto.randomUUID();
     const create = vi.fn(async () => ({ batchId, runCount: 2 }));
-    const service: AutomationBatchService = { create, get: vi.fn(), getArtifact: vi.fn() };
+    const service = automationService({ create });
     const url = await api(workflowRepository([first, second]), service);
 
     const response = await fetch(`${url}api/run-batches`, {
@@ -462,7 +609,7 @@ describe("automation batch HTTP API", () => {
       return repository;
     });
     const create = vi.fn(async () => ({ batchId: crypto.randomUUID(), runCount: 1 }));
-    const url = await api(repository, { create, get: vi.fn(), getArtifact: vi.fn() }, {
+    const url = await api(repository, automationService({ create }), {
       listWorkspaces: vi.fn(),
       resolve,
     });
@@ -478,7 +625,7 @@ describe("automation batch HTTP API", () => {
 
     expect(response.status).toBe(202);
     expect(resolve).toHaveBeenCalledWith(namespaceId);
-    expect(create).toHaveBeenCalledWith([workflow]);
+    expect(create).toHaveBeenCalledWith([workflow], namespaceId);
   });
 
   it.each([
@@ -488,11 +635,7 @@ describe("automation batch HTTP API", () => {
   ])("rejects $name before creating a Relay batch", async ({ body }) => {
     const workflow = completeWorkflow();
     const create = vi.fn();
-    const url = await api(workflowRepository([workflow]), {
-      create,
-      get: vi.fn(),
-      getArtifact: vi.fn(),
-    });
+    const url = await api(workflowRepository([workflow]), automationService({ create }));
 
     const response = await fetch(`${url}api/run-batches`, {
       method: "POST",
@@ -513,11 +656,7 @@ describe("automation batch HTTP API", () => {
   ])("rejects a $name workflow before creating a Relay batch", async ({ workflow: makeWorkflow }) => {
     const workflow = makeWorkflow();
     const create = vi.fn();
-    const url = await api(workflowRepository([workflow]), {
-      create,
-      get: vi.fn(),
-      getArtifact: vi.fn(),
-    });
+    const url = await api(workflowRepository([workflow]), automationService({ create }));
 
     const response = await fetch(`${url}api/run-batches`, {
       method: "POST",
@@ -535,15 +674,17 @@ describe("automation batch HTTP API", () => {
     const snapshot = {
       batchId,
       runs: [{
+        id: workflow.id,
         workflowId: workflow.id,
         status: "completed" as const,
         currentStep: 1,
         totalSteps: 1,
+        assertionResults: [],
       }],
     };
     const get = vi.fn(async () => snapshot);
     const repository = workflowRepository([workflow]);
-    const configuredUrl = await api(repository, { create: vi.fn(), get, getArtifact: vi.fn() });
+    const configuredUrl = await api(repository, automationService({ get }));
     const unavailableUrl = await api(repository, null);
 
     const response = await fetch(`${configuredUrl}api/run-batches/${batchId}`);
@@ -555,6 +696,67 @@ describe("automation batch HTTP API", () => {
     expect(get).toHaveBeenCalledWith(batchId);
     expect(unavailable.status).toBe(503);
     expect(await unavailable.json()).toEqual({ error: "Background runs are not configured." });
+  });
+
+  it("proxies namespace history and durable screenshots while local history stays ephemeral", async () => {
+    const namespaceId = crypto.randomUUID();
+    const workflowId = crypto.randomUUID();
+    const runId = crypto.randomUUID();
+    const screenshot = Buffer.from("durable private screenshot");
+    const list = vi.fn(async () => ({
+      runs: [{
+        id: runId,
+        workflowId,
+        workflowRevision: 2,
+        status: "completed" as const,
+        currentStep: 1,
+        totalSteps: 1,
+        createdAt: "2026-08-20T01:00:00.000Z",
+        updatedAt: "2026-08-20T01:00:01.000Z",
+        assertionResults: [],
+      }],
+    }));
+    const getRunScreenshot = vi.fn(async () => ({
+      bytes: screenshot,
+      mediaType: "image/webp" as const,
+    }));
+    const url = await api(
+      workflowRepository([]),
+      automationService({ list, getRunScreenshot }),
+    );
+
+    const history = await fetch(`${url}api/workflow-runs`, {
+      headers: { "x-workspace-key": namespaceId },
+    });
+    const image = await fetch(`${url}api/namespaces/${namespaceId}/workflow-runs/${runId}/screenshot`);
+    const local = await fetch(`${url}api/workflow-runs`, {
+      headers: { "x-workspace-key": "local" },
+    });
+
+    expect(history.status).toBe(200);
+    expect((await history.json()).runs).toHaveLength(1);
+    expect(list).toHaveBeenCalledWith(namespaceId);
+    expect(image.status).toBe(200);
+    expect(Buffer.from(await image.arrayBuffer())).toEqual(screenshot);
+    expect(getRunScreenshot).toHaveBeenCalledWith(namespaceId, runId);
+    expect(await local.json()).toEqual({ runs: [] });
+  });
+
+  it("does not expose the unused unscoped workflow-run screenshot alias", async () => {
+    const namespaceId = crypto.randomUUID();
+    const runId = crypto.randomUUID();
+    const getRunScreenshot = vi.fn();
+    const url = await api(
+      workflowRepository([]),
+      automationService({ getRunScreenshot }),
+    );
+
+    const response = await fetch(`${url}api/workflow-runs/${runId}/screenshot`, {
+      headers: { "x-workspace-key": namespaceId },
+    });
+
+    expect(response.status).toBe(405);
+    expect(getRunScreenshot).not.toHaveBeenCalled();
   });
 
   it("proxies an authenticated bounded WebP with safe browser headers", async () => {
@@ -594,11 +796,7 @@ describe("automation batch HTTP API", () => {
 
   it("rejects invalid artifact IDs before contacting Relay", async () => {
     const getArtifact = vi.fn();
-    const service = {
-      create: vi.fn(),
-      get: vi.fn(),
-      getArtifact,
-    } as AutomationBatchService;
+    const service = automationService({ getArtifact });
     const url = await api(workflowRepository([]), service);
 
     const response = await fetch(`${url}api/run-artifacts/not-a-uuid`);

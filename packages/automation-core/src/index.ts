@@ -15,6 +15,8 @@ export {
 export type { AutomationPreflight } from "./preflight.js";
 export { AutomationRunner } from "./runner.js";
 export type {
+  AssertionKind,
+  AutomationAssertionResult,
   AutomationCancelledResult,
   AutomationCompletedResult,
   AutomationDiagnostic,

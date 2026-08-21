@@ -174,10 +174,75 @@ describe("AutomationRunner", () => {
       onEvent: (event) => events.push(event),
     }).run(preflightAutomation(workflowWith([assertion])));
 
-    expect(result).toMatchObject({ status: "completed", passedSteps: 1 });
+    expect(result).toMatchObject({
+      status: "completed",
+      passedSteps: 1,
+      assertionResults: [{
+        stepId: assertion.id,
+        stepIndex: 0,
+        stepName: assertion.name,
+        kind: "text_contains",
+        matched: true,
+      }],
+    });
     expect(
       events.filter((event) => event.type === "step.phase").map((event) => event.phase),
     ).toEqual(["asserting"]);
+  });
+
+  it("records a safe false result for a failed assertion and omits unreached assertions", async () => {
+    const { page } = runnerPage();
+    const { waitAfter: _waitAfter, ...assertionBase } = clickStep();
+    const failedAssertion: WorkflowStep = {
+      ...assertionBase,
+      id: "assertion-failed",
+      name: "Checkout confirmation matches",
+      type: "assertion",
+      expectation: { kind: "text_contains", expected: "missing phrase" },
+    };
+    const unreachedAssertion: WorkflowStep = {
+      ...failedAssertion,
+      id: "assertion-unreached",
+      order: 1,
+      name: "This check is not reached",
+    };
+
+    const result = await new AutomationRunner(page).run(
+      preflightAutomation(workflowWith([failedAssertion, unreachedAssertion])),
+    );
+
+    expect(result).toMatchObject({
+      status: "failed",
+      phase: "asserting",
+      assertionResults: [{
+        stepId: "assertion-failed",
+        stepIndex: 0,
+        stepName: "Checkout confirmation matches",
+        kind: "text_contains",
+        matched: false,
+        failureCode: "assertion_failed",
+      }],
+    });
+    expect(JSON.stringify(result)).not.toContain("missing phrase");
+    expect(JSON.stringify(result)).not.toContain("Ready for review");
+    expect(JSON.stringify(result)).not.toContain("assertion-unreached");
+  });
+
+  it("does not create assertion results for disabled assertions", async () => {
+    const { page } = runnerPage();
+    const { waitAfter: _waitAfter, ...assertionBase } = clickStep();
+    const disabledAssertion: WorkflowStep = {
+      ...assertionBase,
+      enabled: false,
+      type: "assertion",
+      expectation: { kind: "visible" },
+    };
+
+    const result = await new AutomationRunner(page).run(
+      preflightAutomation(workflowWith([disabledAssertion, navigateStep(1)])),
+    );
+
+    expect(result).toMatchObject({ status: "completed", assertionResults: [] });
   });
 
   it("returns a cancelled result instead of throwing", async () => {

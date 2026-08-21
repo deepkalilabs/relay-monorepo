@@ -357,6 +357,13 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
       && session.transportStatus === "connected"
       && !["preparing", "running", "pausing", "paused", "stopping"].includes(session.replayStatus),
     ),
+    useProxy: session.useProxy,
+    proxySelectionEnabled: Boolean(
+      session.transportStatus === "connected"
+      && !session.liveViewUrl
+      && ["idle", "stopped", "error"].includes(session.displayStatus)
+      && ["idle", "completed", "stopped"].includes(session.replayStatus)
+    ),
     preparing: session.displayStatus === "starting" || session.replayStatus === "preparing",
     reconnecting: session.displayStatus === "reconnecting",
     restoreFocusAfterCaptcha: ["recording", "reconnecting"].includes(session.displayStatus),
@@ -386,6 +393,7 @@ export function useWorkspaceController(workflowId: string, profileId = "", autoR
     selectPickerOption: session.selectPickerOption,
     dismissSelectPicker: session.dismissSelectPicker,
     setNativeSelects: session.setNativeSelects,
+    setUseProxy: session.setUseProxy,
     continueAfterCaptcha: session.continueAfterCaptcha,
   };
   const browserAlert: BrowserPanelAlert | null = session.displayError

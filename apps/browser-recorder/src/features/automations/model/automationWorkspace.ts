@@ -1,3 +1,7 @@
+import type {
+  AssertionResult,
+  RunScreenshot,
+} from "@/shared/contracts/automation-run";
 import type { WorkflowStatus } from "@/shared/contracts/workflow/domain";
 
 export type AutomationThumbnailVariant = "search" | "form" | "table" | "message";
@@ -20,12 +24,6 @@ export interface AutomationTask {
   folderId: string;
 }
 
-export interface AutomationRunScreenshot {
-  url: string;
-  width: number;
-  height: number;
-}
-
 export interface AutomationRun {
   id: string;
   taskId: string;
@@ -37,8 +35,12 @@ export interface AutomationRun {
   thumbnail?: AutomationThumbnailVariant;
   detail?: string;
   failedStep?: number;
-  screenshot?: AutomationRunScreenshot;
+  durationMs?: number;
+  assertionResults: AssertionResult[];
+  screenshot?: RunScreenshot;
 }
+
+export type AutomationRunScreenshot = RunScreenshot;
 
 export interface AutomationWorkspaceState {
   folders: AutomationFolder[];

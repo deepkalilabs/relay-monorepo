@@ -1,5 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
+import {
+  AssertionResultSchema,
+  BatchAcceptedSchema,
+  BatchSnapshotSchema,
+  RunFailureCodeSchema,
+  RunHistorySchema,
+  RunnerFailureCodeSchema,
+} from "@/shared/contracts/automation-run";
 import type { Workflow } from "@/shared/contracts/workflow/domain";
 import {
   WorkspaceSelectionError,
@@ -17,10 +25,6 @@ const CreateRequest = z.object({
   ({ workflowIds }) => new Set(workflowIds).size === workflowIds.length,
   "Workflow IDs must be unique.",
 );
-const CreateResponse = z.object({
-  batchId: z.uuid(),
-  runCount: z.number().int().min(1).max(10),
-}).strict();
 const RelayArtifactUrl = z.string().regex(/^\/v1\/artifacts\/[0-9a-fA-F-]{36}$/).refine(
   (url) => z.uuid().safeParse(url.slice("/v1/artifacts/".length)).success,
   "Artifact URL must contain a UUID.",
@@ -43,7 +47,8 @@ const RelayRunSnapshot = z.object({
   failedStepId: z.string().optional(),
   failedStepIndex: z.number().int().nonnegative().optional(),
   phase: z.enum(["acting", "asserting", "settling", "waiting"]).optional(),
-  code: z.string().optional(),
+  code: RunnerFailureCodeSchema.optional(),
+  assertionResults: z.array(AssertionResultSchema).optional(),
   thumbnail: RelayThumbnail.optional(),
 }).refine((run) => {
   if (run.currentStep === undefined || run.totalSteps === undefined) {
@@ -56,13 +61,15 @@ const RelayRunSnapshot = z.object({
 const RelayPollResponse = z.object({
   batchId: z.uuid(),
   runs: z.array(RelayRunSnapshot).min(1).max(10),
-}).strict().transform(({ batchId, runs }) => ({
+}).strict().transform(({ batchId, runs }) => BatchSnapshotSchema.parse({
   batchId,
   runs: runs.map((run) => ({
+    id: run.workflowId,
     workflowId: run.workflowId,
     status: run.status,
     currentStep: run.currentStep ?? 0,
     totalSteps: run.totalSteps ?? 0,
+    assertionResults: run.assertionResults ?? [],
     ...(run.thumbnail ? {
       screenshot: {
         url: `/api/run-artifacts/${run.thumbnail.url.slice("/v1/artifacts/".length)}`,
@@ -73,17 +80,107 @@ const RelayPollResponse = z.object({
   })),
 }));
 
-type CreateResult = z.infer<typeof CreateResponse>;
-type PollResult = z.infer<typeof RelayPollResponse>;
+const RelayDurableScreenshotUrl = z.string().refine((url) => {
+  const match = url.match(/^\/v1\/namespaces\/([^/]+)\/workflow-runs\/([^/]+)\/screenshot$/);
+  return match !== null
+    && z.uuid().safeParse(match[1]).success
+    && z.uuid().safeParse(match[2]).success;
+});
+const DurableScreenshot = z.object({
+  url: RelayDurableScreenshotUrl,
+  width: z.number().int().min(1).max(480),
+  height: z.number().int().min(1).max(300),
+}).strict();
+const DurableRun = z.object({
+  id: z.uuid(),
+  batchId: z.uuid(),
+  workflowId: z.uuid(),
+  workflowRevision: z.number().int().min(1),
+  status: z.enum(["queued", "running", "completed", "failed"]),
+  currentStep: z.number().int().nonnegative(),
+  totalSteps: z.number().int().nonnegative(),
+  passedSteps: z.number().int().nonnegative().optional(),
+  skippedSteps: z.number().int().nonnegative().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
+  failedStepId: z.string().optional(),
+  failedStepIndex: z.number().int().nonnegative().optional(),
+  phase: z.enum(["acting", "asserting", "settling", "waiting"]).optional(),
+  failureCode: RunFailureCodeSchema.optional(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  startedAt: z.iso.datetime().optional(),
+  completedAt: z.iso.datetime().optional(),
+  assertionResults: z.array(AssertionResultSchema),
+  screenshot: DurableScreenshot.optional(),
+}).strict()
+  .refine((run) => run.currentStep <= run.totalSteps || run.totalSteps === 0)
+  .refine((run) => !run.screenshot || run.screenshot.url.endsWith(`/workflow-runs/${run.id}/screenshot`));
+
+function browserRun(run: z.infer<typeof DurableRun>) {
+  const screenshotNamespace = run.screenshot?.url.match(/^\/v1\/namespaces\/([^/]+)\//)?.[1];
+  return {
+    id: run.id,
+    workflowId: run.workflowId,
+    workflowRevision: run.workflowRevision,
+    status: run.status,
+    currentStep: run.currentStep,
+    totalSteps: run.totalSteps,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
+    assertionResults: run.assertionResults,
+    ...(run.durationMs === undefined ? {} : { durationMs: run.durationMs }),
+    ...(run.failedStepIndex === undefined ? {} : { failedStepIndex: run.failedStepIndex }),
+    ...(run.failureCode === undefined ? {} : { failureCode: run.failureCode }),
+    ...(run.screenshot ? {
+      screenshot: {
+        url: `/api/namespaces/${screenshotNamespace}/workflow-runs/${run.id}/screenshot`,
+        width: run.screenshot.width,
+        height: run.screenshot.height,
+      },
+    } : {}),
+  };
+}
+
+const DurableBatchResponse = z.object({
+  batchId: z.uuid(),
+  runs: z.array(DurableRun).min(1).max(10),
+}).strict().transform(({ batchId, runs }) => BatchSnapshotSchema.parse({
+  batchId,
+  runs: runs.map(browserRun),
+}));
+const DurableRunList = z.object({
+  runs: z.array(DurableRun),
+  nextCursor: z.string().min(1).optional(),
+}).strict().transform(({ runs, nextCursor }) => RunHistorySchema.parse({
+  runs: runs.map(browserRun),
+  ...(nextCursor ? { nextCursor } : {}),
+}));
+
+type CreateResult = z.infer<typeof BatchAcceptedSchema>;
+type PollResult = z.infer<typeof BatchSnapshotSchema>;
+type RunListResult = z.infer<typeof RunHistorySchema>;
+
+function assertScreenshotNamespace(
+  result: { runs: Array<{ screenshot?: { url: string } }> },
+  namespaceId: string,
+): void {
+  const prefix = `/api/namespaces/${namespaceId}/workflow-runs/`;
+  if (result.runs.some((run) => run.screenshot && !run.screenshot.url.startsWith(prefix))) {
+    throw new SafeBatchError(502, "The automation service returned an invalid response.");
+  }
+}
+
 export interface RunArtifact {
   bytes: Buffer;
   mediaType: "image/webp";
 }
 
 export interface AutomationBatchService {
-  create(workflows: Workflow[]): Promise<CreateResult>;
-  get(batchId: string): Promise<PollResult>;
+  create(workflows: Workflow[], namespaceId?: string): Promise<CreateResult>;
+  get(batchId: string, namespaceId?: string): Promise<PollResult>;
+  list(namespaceId: string): Promise<RunListResult>;
   getArtifact(artifactId: string): Promise<RunArtifact>;
+  getRunScreenshot(namespaceId: string, runId: string): Promise<RunArtifact>;
 }
 
 class SafeBatchError extends Error {
@@ -151,10 +248,10 @@ export function createAutomationBatchService(
     return parsed.data;
   };
 
-  const getArtifact = async (artifactId: string): Promise<RunArtifact> => {
+  const getWebp = async (pathname: string): Promise<RunArtifact> => {
     let response: Response;
     try {
-      response = await fetchRelay(new URL(`v1/artifacts/${encodeURIComponent(artifactId)}`, baseUrl), {
+      response = await fetchRelay(new URL(pathname, baseUrl), {
         method: "GET",
         headers: {
           accept: "image/webp",
@@ -199,19 +296,48 @@ export function createAutomationBatchService(
   };
 
   return {
-    create: (workflows) => request("v1/batches", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ runs: workflows.map((workflow) => ({ workflow })) }),
-    }, 202, CreateResponse),
-    get: (batchId) => request(
-      `v1/batches/${encodeURIComponent(batchId)}`,
-      { method: "GET" },
-      200,
-      RelayPollResponse,
-      "The background run was not found.",
+    create: (workflows, namespaceId) => request(
+      namespaceId
+        ? `v1/namespaces/${encodeURIComponent(namespaceId)}/run-batches`
+        : "v1/batches",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(namespaceId
+          ? { workflowIds: workflows.map((workflow) => workflow.id) }
+          : { runs: workflows.map((workflow) => ({ workflow })) }),
+      },
+      202,
+      BatchAcceptedSchema,
     ),
-    getArtifact,
+    get: async (batchId, namespaceId) => {
+      const result = await request(
+        namespaceId
+          ? `v1/namespaces/${encodeURIComponent(namespaceId)}/run-batches/${encodeURIComponent(batchId)}`
+          : `v1/batches/${encodeURIComponent(batchId)}`,
+        { method: "GET" },
+        200,
+        namespaceId ? DurableBatchResponse : RelayPollResponse,
+        "The background run was not found.",
+      );
+      if (namespaceId) assertScreenshotNamespace(result, namespaceId);
+      return result;
+    },
+    list: async (namespaceId) => {
+      const result = await request(
+        `v1/namespaces/${encodeURIComponent(namespaceId)}/workflow-runs`,
+        { method: "GET" },
+        200,
+        DurableRunList,
+        "Run history was not found.",
+      );
+      assertScreenshotNamespace(result, namespaceId);
+      return result;
+    },
+    getArtifact: (artifactId) => getWebp(`v1/artifacts/${encodeURIComponent(artifactId)}`),
+    getRunScreenshot: (namespaceId, runId) => getWebp(
+      `v1/namespaces/${encodeURIComponent(namespaceId)}/workflow-runs/${encodeURIComponent(runId)}/screenshot`,
+    ),
   };
 }
 
@@ -271,6 +397,17 @@ function safeError(error: unknown): SafeBatchError {
   return new SafeBatchError(500, "The background run request failed.");
 }
 
+function selectedNamespace(request: IncomingMessage): string | undefined {
+  const workspaceKey = request.headers["x-workspace-key"];
+  if (workspaceKey === undefined || workspaceKey === "local") return undefined;
+  if (typeof workspaceKey !== "string") {
+    throw new SafeBatchError(400, "The workspace selection is invalid.");
+  }
+  const namespaceId = z.uuid().safeParse(workspaceKey);
+  if (!namespaceId.success) throw new SafeBatchError(400, "The workspace selection is invalid.");
+  return namespaceId.data;
+}
+
 export async function handleAutomationBatchApi(
   request: IncomingMessage,
   response: ServerResponse,
@@ -280,12 +417,34 @@ export async function handleAutomationBatchApi(
   const segments = new URL(request.url ?? "/", "http://localhost").pathname.split("/").filter(Boolean);
   const isBatchRoute = segments[0] === "api" && segments[1] === "run-batches";
   const isArtifactRoute = segments[0] === "api" && segments[1] === "run-artifacts";
-  if (!isBatchRoute && !isArtifactRoute) return false;
+  const isHistoryRoute = segments[0] === "api" && segments[1] === "workflow-runs";
+  const isNamespaceScreenshotRoute = segments[0] === "api" && segments[1] === "namespaces"
+    && segments[3] === "workflow-runs" && segments[5] === "screenshot";
+  if (!isBatchRoute && !isArtifactRoute && !isHistoryRoute && !isNamespaceScreenshotRoute) return false;
+  const workspaceKey = request.headers["x-workspace-key"];
+  if (isHistoryRoute && segments.length === 2 && request.method === "GET"
+    && (workspaceKey === undefined || workspaceKey === "local")) {
+    sendJson(response, 200, { runs: [] });
+    return true;
+  }
   if (!service) {
     sendJson(response, 503, { error: "Background runs are not configured." });
     return true;
   }
   try {
+    if (isNamespaceScreenshotRoute && segments.length === 6 && request.method === "GET") {
+      const namespaceId = z.uuid().safeParse(segments[2]);
+      const runId = z.uuid().safeParse(segments[4]);
+      if (!namespaceId.success || !runId.success) {
+        throw new SafeBatchError(400, "The run screenshot request is invalid.");
+      }
+      sendArtifact(response, await service.getRunScreenshot(namespaceId.data, runId.data));
+      return true;
+    }
+    if (isNamespaceScreenshotRoute) {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
     if (isArtifactRoute && segments.length === 3 && request.method === "GET") {
       const artifactId = z.uuid().safeParse(segments[2]);
       if (!artifactId.success) throw new SafeBatchError(400, "The run screenshot request is invalid.");
@@ -293,6 +452,14 @@ export async function handleAutomationBatchApi(
       return true;
     }
     if (isArtifactRoute) {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+    if (isHistoryRoute && segments.length === 2 && request.method === "GET") {
+      sendJson(response, 200, await service.list(selectedNamespace(request)!));
+      return true;
+    }
+    if (isHistoryRoute) {
       sendJson(response, 405, { error: "Method not allowed." });
       return true;
     }
@@ -304,11 +471,18 @@ export async function handleAutomationBatchApi(
       const { workflowIds } = CreateRequest.parse(await readJson(request));
       const workflows = await Promise.all(workflowIds.map((id) => repository.get(id)));
       workflows.forEach(assertRunnable);
-      sendJson(response, 202, await service.create(workflows));
+      const namespaceId = selectedNamespace(request);
+      sendJson(response, 202, namespaceId
+        ? await service.create(workflows, namespaceId)
+        : await service.create(workflows));
       return true;
     }
     if (segments.length === 3 && request.method === "GET") {
-      sendJson(response, 200, await service.get(z.uuid().parse(segments[2])));
+      const batchId = z.uuid().parse(segments[2]);
+      const namespaceId = selectedNamespace(request);
+      sendJson(response, 200, namespaceId
+        ? await service.get(batchId, namespaceId)
+        : await service.get(batchId));
       return true;
     }
     sendJson(response, 405, { error: "Method not allowed." });

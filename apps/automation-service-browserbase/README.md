@@ -5,6 +5,10 @@ streaming and process-local batch APIs, plus an opt-in local Inngest POC. It imp
 `@relay/automation-worker-browserbase` directly and has no dependency on FastAPI or
 PostgreSQL.
 
+Read [`NAVIGATION.md`](NAVIGATION.md) for ownership, runtime flows, entry points, and
+change routing. The repository-wide dependency graph is in
+[`../../NAVIGATION.md`](../../NAVIGATION.md).
+
 ## Setup
 
 Install once and build the service dependency chain from the repository root:
@@ -33,6 +37,22 @@ file is:
 ```bash
 set -a; source .env; set +a; npm run dev --workspace @relay/automation-service-browserbase
 ```
+
+## Architecture
+
+This app owns private HTTP transport and process lifecycle. It delegates Browserbase
+session lifecycle to
+[`@relay/automation-worker-browserbase`](../../packages/automation-worker-browserbase/README.md),
+fail-fast sequencing to
+[`@relay/automation-core`](../../packages/automation-core/README.md), and browser phases
+to [`@relay/replay-core`](../../packages/replay-core/README.md). The canonical workflow
+shape comes from
+[`@relay/workflow-contract`](../../packages/workflow-contract/README.md).
+
+Relay FastAPI is the authenticated public gateway and owns durable workflow/run data.
+This service remains unauthenticated and private; its batches, polling snapshots, and
+artifact capabilities are process-local. See [`NAVIGATION.md`](NAVIGATION.md) for the
+detailed ownership and failure boundaries.
 
 ## API
 
@@ -77,7 +97,8 @@ browser actions can have external side effects.
 ### In-memory batches
 
 `POST /v1/batches` accepts one to ten complete workflows without `startStepId` or
-`parameterValues`:
+`parameterValues`. Relay may also supply a UUID `batchId` for stable recovery
+correlation; duplicate supplied IDs are rejected:
 
 ```json
 {
@@ -94,7 +115,10 @@ share the same configured limit. Direct and Inngest requests still receive immed
 capacity rejection instead of joining the batch queue.
 
 `GET /v1/batches/{batchId}` returns workflow IDs, safe statuses, numeric progress,
-durations, fixed failure fields, and optional sensitive terminal `thumbnail` metadata.
+durations, fixed failure fields, safe results for every assertion that executed, and
+optional sensitive terminal `thumbnail` metadata. Assertion results contain only the
+step ID/index/name, assertion kind, matched boolean, duration, and optional fixed failure
+code. Disabled and unreached assertions are omitted.
 Completed and skipped steps both advance `currentStep`. Workflow documents, browser
 URLs, targets, values, provider identifiers, raw errors, image bytes, and local paths
 are never returned.
@@ -187,7 +211,7 @@ are outside this POC.
 | `AUTOMATION_STEP_TIMEOUT_MS` | `60000` | Step deadline; maximum 60 seconds |
 | `AUTOMATION_SHUTDOWN_GRACE_MS` | `30000` | Cleanup grace after shutdown cancellation |
 | `AUTOMATION_TRUST_PRIVATE_NETWORK` | unset | Set exactly `1` to permit screenshots on an explicitly trusted non-loopback private listener; does not relax the Inngest loopback rule |
-| `AUTOMATION_SCREENSHOTS` | `true` | Set to `false` to disable terminal capture and artifact serving; enabled mode requires loopback unless `AUTOMATION_TRUST_PRIVATE_NETWORK=1` |
+| `AUTOMATION_SCREENSHOTS` | `true` locally; `false` in the production image | Enable terminal capture and artifact serving only on loopback or with `AUTOMATION_TRUST_PRIVATE_NETWORK=1` on a trusted private listener |
 | `AUTOMATION_ARTIFACT_DIR` | repository `.relay/artifacts` | Persistent local screenshot directory |
 | `BROWSERBASE_API_KEY` | required | Browserbase credential |
 | `BROWSERBASE_PROJECT_ID` | unset | Optional project selection |

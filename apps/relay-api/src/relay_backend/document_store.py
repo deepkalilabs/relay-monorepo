@@ -12,6 +12,8 @@ from relay_backend.errors import InternalPersistenceError, PersistenceUnavailabl
 from relay_backend.models.workflows import Workflow
 from relay_backend.request_limits import MAX_REQUEST_BYTES
 
+MAX_RUN_SCREENSHOT_BYTES = 100 * 1024
+
 
 class WorkflowDocumentStore(Protocol):
     def put(self, workflow: Workflow) -> str: ...
@@ -59,6 +61,53 @@ class S3WorkflowDocumentStore:
             return Workflow.model_validate_json(body)
         except (ValidationError, ValueError) as error:
             raise InternalPersistenceError from error
+
+
+class RunArtifactStore(Protocol):
+    def put(self, *, namespace_id: object, run_id: object, body: bytes) -> str: ...
+
+    def get(self, object_key: str) -> bytes: ...
+
+
+class S3RunArtifactStore:
+    def __init__(self, client: Any, *, bucket: str) -> None:
+        self.client = client
+        self.bucket = bucket
+
+    def put(self, *, namespace_id: object, run_id: object, body: bytes) -> str:
+        if not body or len(body) > MAX_RUN_SCREENSHOT_BYTES:
+            raise InternalPersistenceError
+        digest = hashlib.sha256(body).hexdigest()
+        object_key = f"run-artifacts/{namespace_id}/{run_id}/{digest}.webp"
+        try:
+            self.client.put_object(
+                Bucket=self.bucket,
+                Key=object_key,
+                Body=body,
+                ContentType="image/webp",
+            )
+        except BotoCoreError as error:
+            raise PersistenceUnavailableError from error
+        except ClientError as error:
+            _raise_client_error(error)
+        return object_key
+
+    def get(self, object_key: str) -> bytes:
+        try:
+            response = self.client.get_object(Bucket=self.bucket, Key=object_key)
+            if response.get("ContentType") not in {None, "image/webp"}:
+                raise InternalPersistenceError
+            with closing(response["Body"]) as stream:
+                body = stream.read(MAX_RUN_SCREENSHOT_BYTES + 1)
+        except BotoCoreError as error:
+            raise PersistenceUnavailableError from error
+        except ClientError as error:
+            _raise_client_error(error)
+        except (AttributeError, KeyError, OSError, TypeError) as error:
+            raise InternalPersistenceError from error
+        if not body or len(body) > MAX_RUN_SCREENSHOT_BYTES:
+            raise InternalPersistenceError
+        return body
 
 
 def serialize_workflow(workflow: Workflow) -> bytes:

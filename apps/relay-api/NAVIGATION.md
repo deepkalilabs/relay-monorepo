@@ -4,6 +4,8 @@ This document is the detailed onboarding map for engineers and coding agents wor
 on Relay Backend. It explains where behavior lives, how requests and data move through
 the service, and which invariants must survive a change. For installation and routine
 commands, see [`README.md`](README.md).
+For the cross-project ownership and dependency graph, see the root
+[`NAVIGATION.md`](../../NAVIGATION.md).
 
 ## Purpose and system boundary
 
@@ -38,6 +40,20 @@ streams the private run service's existing interface. Public `POST /v1/batches` 
 one to ten opaque full workflow documents and `GET /v1/batches/{batchId}` polls the
 process-local result. `GET /v1/artifacts/{artifactId}` preserves temporary relative
 thumbnail capabilities behind shared Basic auth.
+
+Namespace-scoped folder runs use the durable API:
+
+| Operation | Route | Purpose |
+| --- | --- | --- |
+| `createDurableRunBatch` | `POST /v1/namespaces/{namespaceId}/run-batches` | Validate stored complete workflows, create durable run records, and submit one correlated private batch. |
+| `getDurableRunBatch` | `GET /v1/namespaces/{namespaceId}/run-batches/{batchId}` | Return the durable batch and its ordered run snapshots. |
+| `listWorkflowRuns` | `GET /v1/namespaces/{namespaceId}/workflow-runs` | Return cursor-paginated durable run history. |
+| `getWorkflowRun` | `GET /v1/namespaces/{namespaceId}/workflow-runs/{runId}` | Return one namespace-owned durable run. |
+| `getWorkflowRunScreenshot` | `GET /v1/namespaces/{namespaceId}/workflow-runs/{runId}/screenshot` | Stream durable private WebP evidence when available. |
+
+The durable tracker leases accepted batches, polls the process-local service, persists
+safe progress/assertion results, and best-effort copies terminal screenshots into the
+private object store. It never re-submits missing or uncertain work.
 
 The independent execution boundary is
 [`apps/automation-service-browserbase/openapi.yaml`](../automation-service-browserbase/openapi.yaml).
@@ -87,12 +103,16 @@ For a first pass through the code, read:
    canonical models, summaries, and request hashing.
 8. [`src/relay_backend/document_store.py`](src/relay_backend/document_store.py) for
    bounded deterministic object serialization and S3 transport.
-9. [`tests/`](tests/) for contract, failure, concurrency, and privacy examples.
-10. [`packages/automation-core/README.md`](../../packages/automation-core/README.md) for the
+9. [`src/relay_backend/controllers/runs.py`](src/relay_backend/controllers/runs.py),
+   [`src/relay_backend/services/runs.py`](src/relay_backend/services/runs.py), and
+   [`src/relay_backend/data/run_repository.py`](src/relay_backend/data/run_repository.py)
+   for compatibility gateways and durable run history.
+10. [`tests/`](tests/) for contract, failure, concurrency, and privacy examples.
+11. [`packages/automation-core/README.md`](../../packages/automation-core/README.md) for the
    independent background-automation boundary and public TypeScript API.
-11. [`packages/automation-worker-browserbase/README.md`](../../packages/automation-worker-browserbase/README.md)
+12. [`packages/automation-worker-browserbase/README.md`](../../packages/automation-worker-browserbase/README.md)
     for Browserbase run configuration, CLI usage, and provider lifecycle.
-12. [`apps/automation-service-browserbase/README.md`](../automation-service-browserbase/README.md)
+13. [`apps/automation-service-browserbase/NAVIGATION.md`](../automation-service-browserbase/NAVIGATION.md)
     for the streaming and in-memory batch HTTP contract, configuration, and operations.
 
 ## Architecture overview
@@ -351,7 +371,8 @@ apps/relay-api/
 │       ├── 0012-opaque-execution-schema-version.md
 │       ├── 0013-authenticated-workflow-run-gateway.md
 │       ├── 0014-trusted-private-network-screenshots.md
-│       └── 0015-provider-neutral-deployment-ownership.md
+│       ├── 0015-provider-neutral-deployment-ownership.md
+│       └── 0016-durable-namespace-workflow-runs.md
 ├── migrations/
 │   ├── env.py                        Alembic online/offline runtime configuration
 │   ├── script.py.mako                Migration revision template
@@ -359,7 +380,8 @@ apps/relay-api/
 │       ├── 0001_initial.py            Workflow and idempotency table definitions
 │       ├── 0002_add_namespace_and_record.py  Pre-existing namespace/record schema
 │       ├── 0003_add_workflow_document_key.py Object-key staged migration
-│       └── 0004_scope_workflows_to_namespaces.py Namespace ownership migration
+│       ├── 0004_scope_workflows_to_namespaces.py Namespace ownership migration
+│       └── 0005_add_durable_workflow_runs.py  Durable batches, runs, and assertions
 ├── src/
 │   └── relay_backend/
 │       ├── __init__.py                Package marker
@@ -373,26 +395,35 @@ apps/relay-api/
 │       ├── errors.py                  Safe domain and persistence exceptions
 │       ├── controllers/
 │       │   ├── namespaces.py          Namespace and scoped workflow routes
-│       │   └── workflows.py           Deprecated flat workflow routes
+│       │   ├── workflows.py           Deprecated flat workflow routes
+│       │   └── runs.py                Compatibility gateways and durable run routes
 │       ├── services/
 │       │   ├── namespaces.py          Namespace metadata behavior
-│       │   └── workflows.py           Scoped and legacy workflow orchestration
+│       │   ├── workflows.py           Scoped and legacy workflow orchestration
+│       │   └── runs.py                Run submission, tracking, history, and evidence
 │       ├── data/
 │       │   ├── database.py            Psycopg connection pool and transactions
 │       │   ├── idempotency_repository.py Shared global mutation identities
 │       │   ├── namespace_repository.py Namespace metadata and scope checks
-│       │   └── workflow_repository.py Scoped/global SQL and row locking
+│       │   ├── workflow_repository.py Scoped/global SQL and row locking
+│       │   └── run_repository.py      Durable batches, runs, assertions, and leases
 │       └── models/
 │           ├── namespaces.py          Strict namespace API models
-│           └── workflows.py           Canonical Pydantic workflow model family
+│           ├── workflows.py           Canonical Pydantic workflow model family
+│           └── runs.py                Safe durable run and assertion models
 └── tests/
     ├── conftest.py                    Migration and database-cleanup fixtures
     ├── test_api.py                    HTTP, auth, errors, limits, and served contract
+    ├── test_batch_gateway_api.py      Process-local batch compatibility gateway
     ├── test_backfill.py               Resumable legacy-document migration behavior
     ├── test_document_store.py         S3 serialization, bounds, and safe failures
+    ├── test_durable_run_api.py         Durable batch/history/evidence API behavior
     ├── test_namespace_api.py          Namespace and scoped workflow HTTP behavior
     ├── test_namespace_migration.py    Ownership migration and invalid-name guard
     ├── test_namespace_service.py      Namespace concurrency behavior
+    ├── test_run_artifact_store.py     Durable WebP object storage boundaries
+    ├── test_run_gateway_api.py        Direct stream and temporary artifact gateway
+    ├── test_run_repository.py         Durable SQL, pagination, and lease behavior
     ├── test_service.py                Transactions, concurrency, privacy, idempotency
     └── test_models.py                 Validation, variants, summaries, schema agreement
 ```
@@ -414,13 +445,17 @@ are package markers and contain no runtime behavior.
 | [`src/relay_backend/errors.py`](src/relay_backend/errors.py) | Defines failures whose messages are safe at the HTTP boundary. |
 | [`src/relay_backend/controllers/namespaces.py`](src/relay_backend/controllers/namespaces.py) | Maps namespace and canonical scoped workflow operations to services. |
 | [`src/relay_backend/controllers/workflows.py`](src/relay_backend/controllers/workflows.py) | Maps deprecated flat workflow aliases to shared service behavior. |
+| [`src/relay_backend/controllers/runs.py`](src/relay_backend/controllers/runs.py) | Proxies compatibility execution and exposes durable namespace run operations. |
 | [`src/relay_backend/services/namespaces.py`](src/relay_backend/services/namespaces.py) | Implements namespace metadata, ordering, idempotency, and safe conflicts. |
 | [`src/relay_backend/services/workflows.py`](src/relay_backend/services/workflows.py) | Implements scoped and legacy lifecycle behavior with shared revision orchestration. |
+| [`src/relay_backend/services/runs.py`](src/relay_backend/services/runs.py) | Owns durable batch preparation, cursor history, tracking leases, and best-effort evidence transfer. |
 | [`src/relay_backend/data/database.py`](src/relay_backend/data/database.py) | Owns the Psycopg pool and transaction context manager. |
 | [`src/relay_backend/data/idempotency_repository.py`](src/relay_backend/data/idempotency_repository.py) | Claims and completes global idempotency records for every mutation. |
 | [`src/relay_backend/data/namespace_repository.py`](src/relay_backend/data/namespace_repository.py) | Executes namespace metadata, default resolution, and scope-check SQL. |
 | [`src/relay_backend/data/workflow_repository.py`](src/relay_backend/data/workflow_repository.py) | Executes scoped/global metadata, summary, object-pointer, backfill, and lock SQL. |
+| [`src/relay_backend/data/run_repository.py`](src/relay_backend/data/run_repository.py) | Executes namespace-scoped durable run, assertion, screenshot, pagination, and lease SQL. |
 | [`src/relay_backend/models/workflows.py`](src/relay_backend/models/workflows.py) | Defines strict camelCase API models, workflow-step variants, safe summaries, and canonical hashing. |
+| [`src/relay_backend/models/runs.py`](src/relay_backend/models/runs.py) | Defines strict durable batch, run, assertion, failure, history, and screenshot models. |
 | [`migrations/`](migrations/) | Configures Alembic and stores ordered, reversible database changes. |
 | [`tests/test_models.py`](tests/test_models.py) | Proves strict model behavior and OpenAPI schema compatibility. |
 | [`tests/test_service.py`](tests/test_service.py) | Proves lifecycle, transaction, concurrency, privacy, ordering, and idempotency behavior against PostgreSQL. |
@@ -456,6 +491,7 @@ are package markers and contain no runtime behavior.
 | Change list output | `WorkflowSummary` and `to_workflow_summary` in [`models/workflows.py`](src/relay_backend/models/workflows.py) | Repository list query, OpenAPI schemas, and privacy assertions. |
 | Change authentication | [`auth.py`](src/relay_backend/auth.py) | Settings, OpenAPI security, API tests, and ADR 0002. |
 | Change the direct or batch run gateway | [`controllers/runs.py`](src/relay_backend/controllers/runs.py) | Root OpenAPI, gateway tests, deployment settings, and ADR 0013. |
+| Change durable run history or evidence | [`services/runs.py`](src/relay_backend/services/runs.py) and [`run_repository.py`](src/relay_backend/data/run_repository.py) | OpenAPI, migration/models, recorder BFF projections, durable run tests, and ADR 0016. |
 | Change error behavior | [`errors.py`](src/relay_backend/errors.py) and [`main.py`](src/relay_backend/main.py) | OpenAPI responses and safe-error tests. |
 | Change request-size limits | [`request_limits.py`](src/relay_backend/request_limits.py) | `x-contract-semantics`, request-body docs, and boundary tests. |
 | Add configuration | [`settings.py`](src/relay_backend/settings.py) | [`.env.example`](.env.example), README configuration table, and tests. |
@@ -517,6 +553,9 @@ are package markers and contain no runtime behavior.
   capacity; shutdown aborts active work and starts no queued work.
 - Batch workflow inputs are released after their run settles. Terminal snapshots expire
   after one hour, no active batch is evicted, and all batch state is lost on restart.
+- Relay persists namespace batch/run indexes and safe executed-assertion outcomes,
+  resumes expired tracking leases after restart, never resubmits workflow execution,
+  and copies bounded terminal WebPs to private object storage before exposing evidence.
 
 ## Configuration, packaging, and local dependencies
 
@@ -552,8 +591,9 @@ are package markers and contain no runtime behavior.
 ## Testing architecture
 
 The test session applies all Alembic migrations to `TEST_DATABASE_URL`, or to the local
-Compose database when that variable is absent. Before each test, fixtures truncate only
-`workflows` and `idempotency_records`.
+Compose database when that variable is absent. Fixtures clean the workflow,
+idempotency, namespace, durable batch/run/assertion, and tracking state required for
+test isolation while preserving the seeded default namespace.
 
 - Model tests are mostly pure and verify strict validation, every discriminated step and
   parameter variant, safe sorted summaries, stable request hashes, and agreement with
@@ -564,6 +604,9 @@ Compose database when that variable is absent. Before each test, fixtures trunca
   shapes, request limits, safe failures, and the exact served OpenAPI document.
 - Run-gateway API tests use an in-process HTTP transport to prove UUID resolution,
   byte-for-byte streaming, safe header/error forwarding, and artifact-log privacy.
+- Durable-run API and repository tests prove namespace ownership, ordered snapshots,
+  cursor history, tracking leases, safe assertion persistence, restart/missing-batch
+  failure handling, and best-effort durable screenshot transfer.
 - Automation package tests are pure TypeScript tests. They exercise schema/preflight,
   all nine Playwright actions, locator/frame behavior, settling and waits,
   cancellation, sequential fail-fast execution, and privacy-safe diagnostics.
@@ -575,8 +618,8 @@ Compose database when that variable is absent. Before each test, fixtures trunca
 
 ## POC boundaries
 
-The FastAPI service intentionally excludes user accounts, tenants, ownership rules,
-pagination, deletion, workflow-schema migration, collaboration, replay execution,
+The FastAPI service intentionally excludes user accounts, tenant authorization,
+namespace transfer, workflow-list pagination, deletion, workflow-schema migration, collaboration, replay execution,
 local-file mirroring, application-level encryption, production deployment configuration,
 and idempotency-record expiry. The automation library intentionally excludes browser
 and Browserbase lifecycle, jobs, schedules, service APIs, authentication, execution
@@ -640,6 +683,7 @@ agree with the code.
 - [`ADR 0013: Add an authenticated direct and batch workflow gateway`](docs/decisions/0013-authenticated-workflow-run-gateway.md)
 - [`ADR 0014: Permit screenshots on an explicitly trusted private listener`](docs/decisions/0014-trusted-private-network-screenshots.md)
 - [`ADR 0015: Keep deployment ownership provider-neutral`](docs/decisions/0015-provider-neutral-deployment-ownership.md)
+- [`ADR 0016: Persist namespace workflow runs and evidence`](docs/decisions/0016-durable-namespace-workflow-runs.md)
 
 When a decision changes, add a new sequential record that supersedes the older one.
 Preserve accepted historical records rather than rewriting or deleting their rationale.

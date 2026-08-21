@@ -6,11 +6,16 @@ private internal execution service with streaming and in-memory batch APIs.
 The FastAPI service implements the repository's `openapi.yaml`, including atomic
 revisions, global idempotency, privacy-safe summaries, and shared HTTP Basic
 authentication. It also exposes authenticated direct-run, batch, and artifact gateways
-to the private run service. Organizational namespaces own workflows without acting as
+to the private run service, and persists namespace-backed folder runs, assertion
+outcomes, and terminal screenshots. Organizational namespaces own workflows without acting as
 authorization boundaries. Canonical workflow documents live in a private S3-compatible
 bucket; PostgreSQL stores their active object keys and safe relational metadata. The
 service does not execute workflows itself. New drafts and explicit saves use canonical
 schema `1.5`; stored schema `1.2` and `1.4` documents remain readable for compatibility.
+
+Read [`NAVIGATION.md`](NAVIGATION.md) for the detailed API layers, durable-run flow,
+entry points, and common-change routing. The cross-project execution and dependency
+graph is in [`../../NAVIGATION.md`](../../NAVIGATION.md).
 
 ## Quick start
 
@@ -113,6 +118,25 @@ FastAPI limits batch requests and buffered private responses to 1 MiB. It forwar
 safe response headers, uses a 30-second upstream read timeout, and never logs workflow
 documents, parameters, batch IDs, artifact IDs, or private service URLs.
 
+For durable namespace history, submit workflow IDs rather than documents:
+
+```bash
+curl \
+  --user "$BASIC_AUTH_USERNAME:$BASIC_AUTH_PASSWORD" \
+  --header "Content-Type: application/json" \
+  --data "{\"workflowIds\":[\"$WORKFLOW_ID\"]}" \
+  "http://127.0.0.1:8000/v1/namespaces/$NAMESPACE_ID/run-batches"
+
+curl \
+  --user "$BASIC_AUTH_USERNAME:$BASIC_AUTH_PASSWORD" \
+  "http://127.0.0.1:8000/v1/namespaces/$NAMESPACE_ID/workflow-runs"
+```
+
+Relay records one stable run UUID per workflow execution, continues tracking after the
+caller disconnects, and resumes due tracking leases after restart without resubmitting
+browser work. Safe assertion results and private S3-backed WebP evidence are retained
+indefinitely. Screenshot transfer is best effort and never changes the run outcome.
+
 ## Commands
 
 | Command | Purpose |
@@ -168,7 +192,7 @@ docker compose down --volumes
 | `AUTOMATION_STEP_TIMEOUT_MS` | Step deadline, at most 60 seconds; defaults to `60000` |
 | `AUTOMATION_SHUTDOWN_GRACE_MS` | Cancellation cleanup grace; defaults to `30000` |
 | `AUTOMATION_TRUST_PRIVATE_NETWORK` | Set exactly `1` to permit screenshots on an explicitly trusted non-loopback private listener; does not relax the Inngest loopback rule |
-| `AUTOMATION_SCREENSHOTS` | Terminal screenshot capture; defaults to `true` and requires loopback unless `AUTOMATION_TRUST_PRIVATE_NETWORK=1` |
+| `AUTOMATION_SCREENSHOTS` | Terminal screenshot capture; local service default is `true`, production image default is `false`, and enabled private listeners require `AUTOMATION_TRUST_PRIVATE_NETWORK=1` |
 | `AUTOMATION_ARTIFACT_DIR` | Persistent screenshot directory; defaults to repository `.relay/artifacts` |
 | `INNGEST_DEV` | Set exactly `1` with a loopback `AUTOMATION_HOST` to enable the local-only Inngest POC endpoint |
 
@@ -249,6 +273,8 @@ never contacts the Node service directly. The Inngest path does not capture scre
 The Node service still does not read persistence; only FastAPI performs UUID resolution.
 Remote deployments must keep this service private and at exactly one replica because
 batch state, polling snapshots, and thumbnail capabilities are process-local.
+Relay-generated batch IDs let the durable tracker correlate that process-local work;
+missing work becomes a fixed terminal failure and is never re-executed.
 
 Successful idempotency records are retained indefinitely. A replay with the same key,
 method, path, and validated canonical JSON returns the original response even if the
@@ -280,7 +306,9 @@ execution service's unauthenticated boundary and prohibition on public exposure.
 See [ADR 0009](docs/decisions/0009-local-terminal-screenshot-artifacts.md) for terminal
 screenshot capture, persistent local files, and temporary URL access. See
 [ADR 0014](docs/decisions/0014-trusted-private-network-screenshots.md) for the explicit
-trusted-private-listener screenshot opt-in.
+trusted-private-listener screenshot opt-in. See
+[ADR 0016](docs/decisions/0016-durable-namespace-workflow-runs.md) for durable namespace
+run history, safe assertion persistence, tracking leases, and S3-backed evidence.
 
 ## POC boundaries
 
@@ -291,19 +319,24 @@ and application-level encryption. The standalone
 automation library excludes browser lifecycle, queues, service endpoints, persistence,
 retries, recording, and interactive replay controls. The Browserbase worker owns only a
 single run. Its HTTP service adds local transport, streaming, health,
-shared per-process capacity, and a bounded in-memory batch queue. It still excludes
-schedules, durable run persistence, idempotency, reconnection, legacy workflow migration,
+shared per-process capacity, and a bounded in-memory batch queue. Relay now adds durable
+namespace run persistence and reconnectable polling without changing that private queue.
+The private service still excludes schedules, durable persistence, idempotency, legacy workflow migration,
 user authorization, and authenticated contexts. Workflow documents may contain sensitive
 values, so request bodies and workflow contents must not be logged.
 Terminal screenshot files are a deliberate local exception to the no-persistence run
 model; they have no durable API index and are never deleted automatically.
+Namespace terminal screenshots are copied into the private S3-compatible store and have
+a durable API index; they also have no automatic deletion or expiry policy.
 The execution service has no authentication and defaults to loopback. Screenshots may
 also be enabled on an explicitly trusted private listener, but the service is never safe
 to expose publicly.
 
-## Browser handoff
+## Browser integration
 
-The browser automation client still needs the separate integration described in
-[`../../docs/handoffs/browser-remote-batch-gateway.md`](../../docs/handoffs/browser-remote-batch-gateway.md).
-In summary: remove `AUTOMATION_SERVICE_TOKEN`, use Relay HTTP Basic credentials only at
-the public `RELAY_API_BASE_URL`, and keep batch creation non-retrying.
+Browser Recorder uses Relay HTTP Basic credentials only from its server-side BFF. The
+browser calls same-origin recorder routes; it never receives Relay credentials or the
+private automation-service origin. Folder runs use the namespace-scoped durable run
+routes, and screenshot bytes return through authenticated Relay and recorder proxies.
+Creation remains non-retrying because an uncertain request may already have caused
+external browser actions.

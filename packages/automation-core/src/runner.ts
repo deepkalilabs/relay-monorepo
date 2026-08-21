@@ -1,4 +1,5 @@
 import type { Page } from "playwright-core";
+import type { WorkflowStep } from "./workflow.js";
 import {
   AutomationCancelledError,
   AutomationExecutionError,
@@ -14,11 +15,24 @@ export interface AutomationDiagnostic {
   attempts: AutomationAttempt[];
 }
 
+export type AssertionKind = Extract<WorkflowStep, { type: "assertion" }>["expectation"]["kind"];
+
+export interface AutomationAssertionResult {
+  stepId: string;
+  stepIndex: number;
+  stepName: string;
+  kind: AssertionKind;
+  matched: boolean;
+  durationMs: number;
+  failureCode?: "assertion_failed";
+}
+
 interface ResultBase {
   totalSteps: number;
   passedSteps: number;
   skippedSteps: number;
   durationMs: number;
+  assertionResults: AutomationAssertionResult[];
 }
 
 export interface AutomationCompletedResult extends ResultBase {
@@ -93,6 +107,7 @@ export class AutomationRunner {
     const steps = preflight.workflow.steps.slice(preflight.startIndex);
     let passedSteps = 0;
     let skippedSteps = 0;
+    const assertionResults: AutomationAssertionResult[] = [];
     let currentStepId: string | undefined;
     let currentStepIndex: number | undefined;
     const executor = new AutomationExecutor(
@@ -134,12 +149,23 @@ export class AutomationRunner {
           await executor.runStep(step, (phase) =>
             this.emit({ type: "step.phase", stepId: step.id, stepIndex, phase }),
           );
+          const stepDurationMs = elapsedSince(stepStartedAt);
+          if (step.type === "assertion") {
+            assertionResults.push({
+              stepId: step.id,
+              stepIndex,
+              stepName: step.name,
+              kind: step.expectation.kind,
+              matched: true,
+              durationMs: stepDurationMs,
+            });
+          }
           passedSteps += 1;
           this.emit({
             type: "step.completed",
             stepId: step.id,
             stepIndex,
-            durationMs: elapsedSince(stepStartedAt),
+            durationMs: stepDurationMs,
           });
           currentStepId = undefined;
           currentStepIndex = undefined;
@@ -154,6 +180,17 @@ export class AutomationRunner {
             attempts: executionError.attempts,
           };
           const phase = executionError.phase ?? "acting";
+          if (step.type === "assertion") {
+            assertionResults.push({
+              stepId: step.id,
+              stepIndex,
+              stepName: step.name,
+              kind: step.expectation.kind,
+              matched: false,
+              durationMs: elapsedSince(stepStartedAt),
+              failureCode: "assertion_failed",
+            });
+          }
           this.emit({
             type: "step.failed",
             stepId: step.id,
@@ -167,6 +204,7 @@ export class AutomationRunner {
             passedSteps,
             skippedSteps,
             durationMs: elapsedSince(startedAt),
+            assertionResults,
             failedStepId: step.id,
             failedStepIndex: stepIndex,
             phase,
@@ -183,6 +221,7 @@ export class AutomationRunner {
         passedSteps,
         skippedSteps,
         durationMs: elapsedSince(startedAt),
+        assertionResults,
       };
       this.emit({ type: "run.completed", result });
       return result;
@@ -198,6 +237,7 @@ export class AutomationRunner {
           passedSteps,
           skippedSteps,
           durationMs: elapsedSince(startedAt),
+          assertionResults,
           phase: executionError.phase ?? "acting",
           diagnostic: { message: executionError.message, attempts: executionError.attempts },
         };
@@ -213,6 +253,7 @@ export class AutomationRunner {
         passedSteps,
         skippedSteps,
         durationMs: elapsedSince(startedAt),
+        assertionResults,
         ...(currentStepId === undefined ? {} : { currentStepId }),
         ...(currentStepIndex === undefined ? {} : { currentStepIndex }),
       };

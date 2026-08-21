@@ -488,7 +488,7 @@ def test_served_openapi_is_the_authenticated_repository_contract(client: TestCli
     assert response.status_code == 200
     contract = response.json()
     assert contract["openapi"] == "3.1.0"
-    assert contract["info"]["version"] == "1.3.0"
+    assert contract["info"]["version"] == "1.4.0"
     assert contract["paths"]["/v1/run-by-id"]["post"]["operationId"] == "runWorkflowById"
     assert contract["paths"]["/v1/batches"]["post"]["operationId"] == "createBatch"
     assert contract["paths"]["/v1/batches/{batchId}"]["get"]["operationId"] == "getBatch"
@@ -505,6 +505,11 @@ def test_served_openapi_is_the_authenticated_repository_contract(client: TestCli
         "/v1/batches/{batchId}",
         "/v1/namespaces",
         "/v1/namespaces/{namespaceId}",
+        "/v1/namespaces/{namespaceId}/run-batches",
+        "/v1/namespaces/{namespaceId}/run-batches/{batchId}",
+        "/v1/namespaces/{namespaceId}/workflow-runs",
+        "/v1/namespaces/{namespaceId}/workflow-runs/{runId}",
+        "/v1/namespaces/{namespaceId}/workflow-runs/{runId}/screenshot",
         "/v1/namespaces/{namespaceId}/workflows",
         "/v1/namespaces/{namespaceId}/workflows/{workflowId}",
         "/v1/namespaces/{namespaceId}/workflows/{workflowId}/finish",

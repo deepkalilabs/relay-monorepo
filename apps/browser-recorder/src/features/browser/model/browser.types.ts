@@ -28,6 +28,8 @@ export interface BrowserViewModel {
   captchaStatus: CaptchaStatus | null;
   nativeSelects: boolean;
   nativeSelectsEnabled: boolean;
+  useProxy: boolean;
+  proxySelectionEnabled: boolean;
   preparing: boolean;
   reconnecting: boolean;
   restoreFocusAfterCaptcha: boolean;
@@ -45,5 +47,6 @@ export interface BrowserActions {
   selectPickerOption: (requestId: string, value: string) => void;
   dismissSelectPicker: (requestId: string) => void;
   setNativeSelects: (enabled: boolean) => void;
+  setUseProxy: (enabled: boolean) => void;
   continueAfterCaptcha: () => void;
 }

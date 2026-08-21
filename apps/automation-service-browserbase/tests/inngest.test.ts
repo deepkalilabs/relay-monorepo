@@ -18,6 +18,7 @@ const completedOutcome: BrowserbaseRunOutcome = {
     passedSteps: 1,
     skippedSteps: 0,
     durationMs: 10,
+    assertionResults: [],
   },
   cleanupStatus: "completed",
 };
@@ -131,6 +132,7 @@ describe("minimal Inngest automation function", () => {
         passedSteps: 0,
         skippedSteps: 0,
         durationMs: 10,
+        assertionResults: [],
         failedStepId: "private-step-id",
         failedStepIndex: 0,
         phase: "acting",

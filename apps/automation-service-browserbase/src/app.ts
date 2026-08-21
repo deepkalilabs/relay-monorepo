@@ -76,6 +76,7 @@ interface RunRequestBody {
 }
 
 interface BatchRequestBody {
+  batchId?: string;
   runs: Array<{
     workflow: object & { id: string; schemaVersion: string; status: "complete" };
   }>;
@@ -107,6 +108,7 @@ const batchRequestSchema = {
   additionalProperties: false,
   required: ["runs"],
   properties: {
+    batchId: { type: "string", format: "uuid" },
     runs: {
       type: "array",
       minItems: 1,
@@ -496,7 +498,7 @@ export function buildAutomationService(
         workflowId: workflow.id,
         workflow,
       }));
-      const created = batchCoordinator.createBatch(inputs);
+      const created = batchCoordinator.createBatch(inputs, request.body.batchId);
       if (!created) {
         return reply
           .status(429)

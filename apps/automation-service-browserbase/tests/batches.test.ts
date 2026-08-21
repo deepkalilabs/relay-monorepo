@@ -14,6 +14,14 @@ const completedOutcome: BrowserbaseRunOutcome = {
     passedSteps: 1,
     skippedSteps: 1,
     durationMs: 25,
+    assertionResults: [{
+      stepId: "assertion-1",
+      stepIndex: 0,
+      stepName: "Page contains confirmation",
+      kind: "page_text_contains",
+      matched: true,
+      durationMs: 9,
+    }],
   },
   cleanupStatus: "completed",
 };
@@ -52,6 +60,21 @@ function controlledRuns(capacity: number) {
 }
 
 describe("BatchCoordinator", () => {
+  it("uses a caller-supplied batch ID and rejects duplicate correlation IDs", () => {
+    const runs = controlledRuns(1);
+    const coordinator = new BatchCoordinator({
+      randomUUID: () => "11111111-1111-4111-8111-111111111111",
+      tryStart: runs.tryStart,
+    });
+    const suppliedId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+    expect(coordinator.createBatch(batchInputs(1), suppliedId)).toEqual({
+      batchId: suppliedId,
+      runCount: 1,
+    });
+    expect(coordinator.createBatch(batchInputs(1), suppliedId)).toBeUndefined();
+  });
+
   it("starts five runs and leaves the sixth queued until a slot is released", async () => {
     const runs = controlledRuns(5);
     const coordinator = new BatchCoordinator({
@@ -119,6 +142,14 @@ describe("BatchCoordinator", () => {
       passedSteps: 1,
       skippedSteps: 1,
       durationMs: 25,
+      assertionResults: [{
+        stepId: "assertion-1",
+        stepIndex: 0,
+        stepName: "Page contains confirmation",
+        kind: "page_text_contains",
+        matched: true,
+        durationMs: 9,
+      }],
     });
     expect(JSON.stringify(snapshot)).not.toMatch(/private-|privateUrl|"workflow":/);
   });
