@@ -31,21 +31,21 @@ class RunRepository:
         connection.execute(
             """
             INSERT INTO workflow_run_batches (
-                id, namespace_id, runner_batch_id, status, created_at, updated_at, next_poll_at
-            ) VALUES (%s, %s, %s, 'queued', %s, %s, %s)
+                id, namespace_id, status, created_at, updated_at, next_poll_at
+            ) VALUES (%s, %s, 'queued', %s, %s, %s)
             """,
-            (batch_id, namespace_id, batch_id, now, now, now + timedelta(seconds=30)),
+            (batch_id, namespace_id, now, now, now + timedelta(seconds=30)),
         )
         with connection.cursor() as cursor:
             cursor.executemany(
                 """
                 INSERT INTO workflow_runs (
-                    id, batch_id, namespace_id, workflow_id, workflow_revision,
+                    id, batch_id, workflow_id, workflow_revision,
                     status, created_at, updated_at
-                ) VALUES (%s, %s, %s, %s, %s, 'queued', %s, %s)
+                ) VALUES (%s, %s, %s, %s, 'queued', %s, %s)
                 """,
                 [
-                    (run_id, batch_id, namespace_id, workflow_id, revision, now, now)
+                    (run_id, batch_id, workflow_id, revision, now, now)
                     for run_id, workflow_id, revision in runs
                 ],
             )
@@ -209,6 +209,32 @@ class RunRepository:
         ).fetchall()
         return {row["workflow_id"] for row in rows}
 
+    def lock_batch_for_update(
+        self,
+        connection: Connection,
+        *,
+        batch_id: UUID,
+        owner: UUID | None,
+        now: datetime,
+    ) -> UUID | None:
+        row = connection.execute(
+            """
+            SELECT namespace_id
+              FROM workflow_run_batches
+             WHERE id = %s
+               AND (
+                   (%s::uuid IS NULL AND lease_owner IS NULL AND status = 'queued')
+                   OR (
+                       lease_owner = %s
+                       AND lease_expires_at > %s
+                   )
+               )
+             FOR UPDATE
+            """,
+            (batch_id, owner, owner, now),
+        ).fetchone()
+        return None if row is None else row["namespace_id"]
+
     def claim_due_batch(
         self,
         connection: Connection,
@@ -233,11 +259,11 @@ class RunRepository:
                SET lease_owner = %s, lease_expires_at = %s, updated_at = %s
               FROM candidate
              WHERE batch.id = candidate.id
-            RETURNING batch.runner_batch_id
+            RETURNING batch.id
             """,
             (now, now, owner, now + timedelta(seconds=lease_seconds), now),
         ).fetchone()
-        return None if row is None else row["runner_batch_id"]
+        return None if row is None else row["id"]
 
     def release_batch(
         self,
@@ -254,8 +280,9 @@ class RunRepository:
                SET status = CASE WHEN status = 'queued' THEN 'running' ELSE status END,
                    next_poll_at = %s, lease_owner = NULL, lease_expires_at = NULL, updated_at = %s
              WHERE id = %s AND lease_owner = %s
+               AND lease_expires_at > %s
             """,
-            (now + timedelta(seconds=delay_seconds), now, batch_id, owner),
+            (now + timedelta(seconds=delay_seconds), now, batch_id, owner, now),
         )
 
     def finalize_batch_if_ready(
@@ -284,8 +311,9 @@ class RunRepository:
                SET status = %s, completed_at = COALESCE(completed_at, %s),
                    updated_at = %s, lease_owner = NULL, lease_expires_at = NULL
              WHERE id = %s AND lease_owner = %s
+               AND lease_expires_at > %s
             """,
-            ("completed" if row["all_completed"] else "failed", now, now, batch_id, owner),
+            ("completed" if row["all_completed"] else "failed", now, now, batch_id, owner, now),
         )
         return True
 
@@ -294,7 +322,6 @@ class RunRepository:
         connection: Connection,
         *,
         batch_id: UUID,
-        owner: UUID | None,
         code: str,
         now: datetime,
     ) -> None:
@@ -313,9 +340,9 @@ class RunRepository:
             UPDATE workflow_run_batches
                SET status = 'failed', completed_at = COALESCE(completed_at, %s),
                    updated_at = %s, lease_owner = NULL, lease_expires_at = NULL
-             WHERE id = %s AND (%s::uuid IS NULL OR lease_owner = %s)
+             WHERE id = %s
             """,
-            (now, now, batch_id, owner, owner),
+            (now, now, batch_id),
         )
 
     def list_runs(
@@ -330,19 +357,21 @@ class RunRepository:
         cursor_time, cursor_id = cursor if cursor is not None else (None, None)
         rows = connection.execute(
             """
-            SELECT id, batch_id, workflow_id, workflow_revision, status,
-                   current_step, total_steps, passed_steps, skipped_steps,
-                   duration_ms, failed_step_id, failed_step_index, phase,
-                   failure_code, created_at, updated_at, started_at, completed_at,
-                   screenshot_status, screenshot_width, screenshot_height
-              FROM workflow_runs
-             WHERE namespace_id = %s
-               AND (%s::uuid IS NULL OR workflow_id = %s)
+            SELECT run.id, run.batch_id, run.workflow_id, run.workflow_revision, run.status,
+                   run.current_step, run.total_steps, run.passed_steps, run.skipped_steps,
+                   run.duration_ms, run.failed_step_id, run.failed_step_index, run.phase,
+                   run.failure_code, run.created_at, run.updated_at, run.started_at,
+                   run.completed_at, run.screenshot_status, run.screenshot_width,
+                   run.screenshot_height
+              FROM workflow_runs AS run
+              JOIN workflow_run_batches AS batch ON batch.id = run.batch_id
+             WHERE batch.namespace_id = %s
+               AND (%s::uuid IS NULL OR run.workflow_id = %s)
                AND (
                    %s::timestamptz IS NULL
-                   OR (created_at, id) < (%s::timestamptz, %s::uuid)
+                   OR (run.created_at, run.id) < (%s::timestamptz, %s::uuid)
                )
-             ORDER BY created_at DESC, id DESC
+             ORDER BY run.created_at DESC, run.id DESC
              LIMIT %s
             """,
             (
@@ -366,13 +395,15 @@ class RunRepository:
     ) -> WorkflowRun:
         row = connection.execute(
             """
-            SELECT id, batch_id, workflow_id, workflow_revision, status,
-                   current_step, total_steps, passed_steps, skipped_steps,
-                   duration_ms, failed_step_id, failed_step_index, phase,
-                   failure_code, created_at, updated_at, started_at, completed_at,
-                   screenshot_status, screenshot_width, screenshot_height
-              FROM workflow_runs
-             WHERE namespace_id = %s AND id = %s
+            SELECT run.id, run.batch_id, run.workflow_id, run.workflow_revision, run.status,
+                   run.current_step, run.total_steps, run.passed_steps, run.skipped_steps,
+                   run.duration_ms, run.failed_step_id, run.failed_step_index, run.phase,
+                   run.failure_code, run.created_at, run.updated_at, run.started_at,
+                   run.completed_at, run.screenshot_status, run.screenshot_width,
+                   run.screenshot_height
+              FROM workflow_runs AS run
+              JOIN workflow_run_batches AS batch ON batch.id = run.batch_id
+             WHERE batch.namespace_id = %s AND run.id = %s
             """,
             (namespace_id, run_id),
         ).fetchone()
@@ -387,25 +418,23 @@ class RunRepository:
         namespace_id: UUID,
         batch_id: UUID,
     ) -> RunBatch:
-        exists = connection.execute(
-            "SELECT 1 FROM workflow_run_batches WHERE namespace_id = %s AND id = %s",
-            (namespace_id, batch_id),
-        ).fetchone()
-        if exists is None:
-            raise ScopedWorkflowNotFoundError
         rows = connection.execute(
             """
-            SELECT id, batch_id, workflow_id, workflow_revision, status,
-                   current_step, total_steps, passed_steps, skipped_steps,
-                   duration_ms, failed_step_id, failed_step_index, phase,
-                   failure_code, created_at, updated_at, started_at, completed_at,
-                   screenshot_status, screenshot_width, screenshot_height
-              FROM workflow_runs
-             WHERE namespace_id = %s AND batch_id = %s
-             ORDER BY created_at, id
+            SELECT run.id, run.batch_id, run.workflow_id, run.workflow_revision, run.status,
+                   run.current_step, run.total_steps, run.passed_steps, run.skipped_steps,
+                   run.duration_ms, run.failed_step_id, run.failed_step_index, run.phase,
+                   run.failure_code, run.created_at, run.updated_at, run.started_at,
+                   run.completed_at, run.screenshot_status, run.screenshot_width,
+                   run.screenshot_height
+              FROM workflow_runs AS run
+              JOIN workflow_run_batches AS batch ON batch.id = run.batch_id
+             WHERE batch.namespace_id = %s AND batch.id = %s
+             ORDER BY run.created_at, run.id
             """,
             (namespace_id, batch_id),
         ).fetchall()
+        if not rows:
+            raise ScopedWorkflowNotFoundError
         return RunBatch(
             batch_id=batch_id,
             runs=self._with_assertions(connection, rows, namespace_id=namespace_id),
@@ -420,8 +449,11 @@ class RunRepository:
     ) -> str:
         row = connection.execute(
             """
-            SELECT screenshot_object_key FROM workflow_runs
-             WHERE namespace_id = %s AND id = %s AND screenshot_status = 'available'
+            SELECT run.screenshot_object_key
+              FROM workflow_runs AS run
+              JOIN workflow_run_batches AS batch ON batch.id = run.batch_id
+             WHERE batch.namespace_id = %s AND run.id = %s
+               AND run.screenshot_status = 'available'
             """,
             (namespace_id, run_id),
         ).fetchone()

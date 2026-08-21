@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 from datetime import UTC, datetime
@@ -17,6 +18,7 @@ from relay_backend.data.database import Database
 from relay_backend.errors import PersistenceUnavailableError, ScopedWorkflowNotFoundError
 from relay_backend.main import create_app
 from relay_backend.models.workflows import Workflow
+from relay_backend.request_limits import MAX_REQUEST_BYTES
 from relay_backend.services.runs import RunService, RunTracker
 from tests.conftest import DATABASE_URL
 from tests.test_batch_gateway_api import byte_stream, settings
@@ -48,6 +50,17 @@ class InMemoryRunArtifactStore:
 class UnavailableRunArtifactStore(InMemoryRunArtifactStore):
     def put(self, *, namespace_id: object, run_id: object, body: bytes) -> str:
         raise PersistenceUnavailableError
+
+
+class CountingByteStream(httpx2.AsyncByteStream):
+    def __init__(self, chunks: list[bytes]) -> None:
+        self.chunks = chunks
+        self.read_count = 0
+
+    async def __aiter__(self):
+        for chunk in self.chunks:
+            self.read_count += 1
+            yield chunk
 
 
 def seeded_run_service() -> tuple[Database, RunService, UUID, Workflow]:
@@ -322,6 +335,148 @@ def test_tracker_marks_mismatched_runner_snapshot_lost_without_retrying() -> Non
 
     assert run.status == "failed"
     assert run.failure_code == "execution_lost"
+
+
+def test_tracker_marks_oversized_runner_snapshot_lost() -> None:
+    database, run_service, namespace_id, workflow = seeded_run_service()
+    prepared = run_service.prepare_batch(namespace_id, [workflow.id])
+    run_service.mark_submitted(prepared.batch_id)
+    snapshot = json.dumps(
+        {
+            "batchId": str(prepared.batch_id),
+            "runs": [{"workflowId": str(workflow.id), "status": "queued"}],
+        }
+    ).encode()
+
+    async def upstream(_request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=snapshot + b" " * MAX_REQUEST_BYTES)
+
+    tracker = RunTracker(
+        run_service,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(upstream)),
+        InMemoryRunArtifactStore(),
+        automation_service_url="http://automation.internal:8080",
+        clock=lambda: datetime(2026, 8, 20, 12, tzinfo=UTC),
+    )
+    try:
+        assert tracker.poll_once_sync() is True
+        run = run_service.list_runs(namespace_id).runs[0]
+    finally:
+        database.close()
+
+    assert run.status == "failed"
+    assert run.failure_code == "execution_lost"
+
+
+def test_tracker_retries_oversized_screenshot_only_until_capability_expiry() -> None:
+    database, run_service, namespace_id, workflow = seeded_run_service()
+    prepared = run_service.prepare_batch(namespace_id, [workflow.id])
+    run_service.mark_submitted(prepared.batch_id)
+    artifact_id = "33333333-3333-4333-8333-333333333333"
+    screenshot_stream = CountingByteStream([b"x" * 60_000] * 3)
+    current_time = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    run_service.clock = lambda: current_time
+
+    async def upstream(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == f"/v1/artifacts/{artifact_id}":
+            return httpx2.Response(
+                200,
+                headers={"Content-Type": "image/webp"},
+                stream=screenshot_stream,
+            )
+        return httpx2.Response(
+            200,
+            json={
+                "batchId": str(prepared.batch_id),
+                "runs": [
+                    {
+                        "workflowId": str(workflow.id),
+                        "status": "completed",
+                        "thumbnail": {
+                            "url": f"/v1/artifacts/{artifact_id}",
+                            "mediaType": "image/webp",
+                            "width": 480,
+                            "height": 300,
+                            "expiresAt": "2026-08-20T13:00:00Z",
+                        },
+                    }
+                ],
+            },
+        )
+
+    tracker = RunTracker(
+        run_service,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(upstream)),
+        InMemoryRunArtifactStore(),
+        automation_service_url="http://automation.internal:8080",
+        clock=lambda: current_time,
+    )
+    try:
+        assert tracker.poll_once_sync() is True
+        with psycopg.connect(DATABASE_URL, row_factory=dict_row) as connection:
+            pending = connection.execute(
+                "SELECT screenshot_status FROM workflow_runs WHERE batch_id = %s",
+                (prepared.batch_id,),
+            ).fetchone()
+        assert pending["screenshot_status"] == "pending"
+        assert screenshot_stream.read_count == 2
+
+        current_time = datetime(2026, 8, 20, 14, tzinfo=UTC)
+        assert tracker.poll_once_sync() is True
+        with psycopg.connect(DATABASE_URL, row_factory=dict_row) as connection:
+            unavailable = connection.execute(
+                "SELECT screenshot_status FROM workflow_runs WHERE batch_id = %s",
+                (prepared.batch_id,),
+            ).fetchone()
+    finally:
+        database.close()
+
+    assert unavailable["screenshot_status"] == "unavailable"
+
+
+def test_tracker_loop_continues_after_unexpected_iteration_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database, run_service, _namespace_id, _workflow = seeded_run_service()
+    tracker = RunTracker(
+        run_service,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(lambda _request: None)),
+        InMemoryRunArtifactStore(),
+        automation_service_url="http://automation.internal:8080",
+        error_delay_seconds=0,
+    )
+    attempts = 0
+    continued = asyncio.Event()
+    log_messages: list[str] = []
+
+    def record_log(message: str, *args) -> None:
+        log_messages.append(message % args)
+
+    monkeypatch.setattr("relay_backend.services.runs.logger.error", record_log)
+
+    async def flaky_poll() -> bool:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("private tracker detail")
+        continued.set()
+        return False
+
+    tracker.poll_once = flaky_poll  # type: ignore[method-assign]
+
+    async def exercise() -> None:
+        tracker.start()
+        await asyncio.wait_for(continued.wait(), timeout=1)
+        await tracker.stop()
+
+    try:
+        asyncio.run(exercise())
+    finally:
+        database.close()
+
+    assert attempts >= 2
+    assert log_messages == ["Run tracker iteration failed: RuntimeError"]
+    assert "private tracker detail" not in "".join(log_messages)
 
 
 def test_openapi_documents_durable_namespace_run_history() -> None:
