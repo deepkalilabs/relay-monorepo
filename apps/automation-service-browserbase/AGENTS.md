@@ -2,6 +2,9 @@
 
 The root [`AGENTS.md`](../../AGENTS.md) is authoritative for Git safety, ADR review,
 repository-wide tooling, and cross-project verification. Read it before this guide.
+Read the root [`NAVIGATION.md`](../../NAVIGATION.md) and this project's
+[`NAVIGATION.md`](NAVIGATION.md) for current ownership, runtime flows, entry points, and
+the sources-of-truth order.
 
 This app exposes the `@relay/automation-worker-browserbase` package through a private
 Fastify HTTP process. [`openapi.yaml`](openapi.yaml) is the source of truth for its wire

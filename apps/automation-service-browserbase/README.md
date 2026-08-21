@@ -5,6 +5,10 @@ streaming and process-local batch APIs, plus an opt-in local Inngest POC. It imp
 `@relay/automation-worker-browserbase` directly and has no dependency on FastAPI or
 PostgreSQL.
 
+Read [`NAVIGATION.md`](NAVIGATION.md) for ownership, runtime flows, entry points, and
+change routing. The repository-wide dependency graph is in
+[`../../NAVIGATION.md`](../../NAVIGATION.md).
+
 ## Setup
 
 Install once and build the service dependency chain from the repository root:
@@ -33,6 +37,22 @@ file is:
 ```bash
 set -a; source .env; set +a; npm run dev --workspace @relay/automation-service-browserbase
 ```
+
+## Architecture
+
+This app owns private HTTP transport and process lifecycle. It delegates Browserbase
+session lifecycle to
+[`@relay/automation-worker-browserbase`](../../packages/automation-worker-browserbase/README.md),
+fail-fast sequencing to
+[`@relay/automation-core`](../../packages/automation-core/README.md), and browser phases
+to [`@relay/replay-core`](../../packages/replay-core/README.md). The canonical workflow
+shape comes from
+[`@relay/workflow-contract`](../../packages/workflow-contract/README.md).
+
+Relay FastAPI is the authenticated public gateway and owns durable workflow/run data.
+This service remains unauthenticated and private; its batches, polling snapshots, and
+artifact capabilities are process-local. See [`NAVIGATION.md`](NAVIGATION.md) for the
+detailed ownership and failure boundaries.
 
 ## API
 

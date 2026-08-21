@@ -6,6 +6,9 @@ The caller owns the browser and
 passes an existing Playwright `Page`; this package does not create browser sessions,
 persist runs, or expose a service API.
 
+See the root [`NAVIGATION.md`](../../NAVIGATION.md) for the complete dependency graph
+and change-routing map.
+
 ## Usage
 
 ```ts
@@ -72,13 +75,25 @@ npm run build --workspace @relay/automation-core
 npm pack --dry-run --workspace @relay/automation-core
 ```
 
-The port is behavior-derived from `browser_replay` commit
-`bbf6409ae154dc8980b2b9d36e834c2c3b849182`. That repository remains the interactive
-editor replay product; changes here do not modify it.
-
 `@relay/replay-core` owns target/frame resolution, canonical step actions, settling, and
 waits. `src/execution.ts` remains the privacy-safe compatibility adapter used by the
 existing runner and tests.
+
+## Source map
+
+- `src/index.ts` is the supported package export surface.
+- `src/workflow.ts`, `src/target-resolution.ts`, and `src/step-actions.ts` preserve the
+  existing automation-facing API while delegating shared behavior to workflow-contract
+  and replay-core.
+- `src/preflight.ts` translates executable preflight into the background runner shape.
+- `src/execution.ts` maps replay phases and structured failures to privacy-safe
+  automation attempts.
+- `src/runner.ts` owns fail-fast step sequencing, events, skips, cancellation, and
+  terminal results.
+- `src/execution-errors.ts` owns background-safe error and phase projections.
+
+Browser Recorder does not depend on automation-core; both runners consume replay-core
+without sharing interactive and fail-fast orchestration policy.
 
 ## Deliberate boundaries
 

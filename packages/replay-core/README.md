@@ -2,6 +2,9 @@
 
 Private provider-neutral Playwright primitives shared by Relay replay runners.
 
+See the root [`NAVIGATION.md`](../../NAVIGATION.md) for the complete dependency graph
+and change-routing map.
+
 The package owns executable preflight, frame and target resolution, recorded position
 restoration, actions and assertions, page activity tracking, automatic settling,
 explicit delays and conditions, and redundant option-click classification. Operations
@@ -26,6 +29,23 @@ lifecycle, transport, persistence, screenshots, or user-facing diagnostics.
 Automation-core consumes these operations behind its fail-fast facade. The frontend
 `ReplayEngine` consumes them behind its interactive phase checkpoints and translates
 structured failures into frontend-owned diagnostics.
+
+## Source map
+
+- `src/index.ts` is the supported package export surface.
+- `src/preflight.ts` selects the executable range and bootstrap navigation.
+- `src/target-resolution.ts` owns frame selection, locator construction, uniqueness,
+  visibility, and recorded element fingerprint checks.
+- `src/step-actions.ts` owns initial navigation, recorded position restoration,
+  canonical actions, and assertions.
+- `src/activity.ts` and `src/waits.ts` own request/DOM activity, automatic settling,
+  explicit delays, and stable visibility conditions.
+- `src/errors.ts` and `src/timing.ts` own structured failures, cancellation, attempts,
+  deadlines, and safe defaults.
+
+The package depends only on workflow-contract at runtime. It must remain independent of
+Browserbase, React, runner sequencing, HTTP/WebSocket transports, persistence, and
+product-specific diagnostics.
 
 ## Commands
 

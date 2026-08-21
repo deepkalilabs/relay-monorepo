@@ -5,6 +5,24 @@ fresh Browserbase sessions. It owns Browserbase lifecycle and delegates browser 
 and assertions to `@relay/automation-core`. It does not expose an HTTP API, persist run
 state, retry actions, reuse recorded sessions, or manage authentication state.
 
+See the root [`NAVIGATION.md`](../../NAVIGATION.md) for the complete dependency graph
+and change-routing map.
+
+## Architecture
+
+- `src/index.ts` exports the supported worker API.
+- `src/prepare.ts` validates complete workflows, selects the enabled range, and resolves
+  fixed/profile/runtime fill values without mutating stored documents.
+- `src/worker.ts` owns Browserbase provisioning, Playwright connection, timeouts,
+  cancellation, event forwarding, best-effort terminal capture, and cleanup.
+- `src/cli.ts` owns bounded file input, `validate`/`run` commands, privacy-safe JSONL,
+  signals, and exit codes.
+
+The worker delegates sequencing and browser phases to automation-core and its shared
+dependencies. The private automation service consumes this worker and owns HTTP,
+capacity, batches, and artifact storage. Relay FastAPI owns authentication, persistence,
+durable run history, and evidence indexing.
+
 ## Commands
 
 Install once and build the worker dependency chain from the repository root:

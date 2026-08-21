@@ -6,6 +6,8 @@ project routing, and verification. The repository layout is governed by
 
 ## Read before changing files
 
+- Read [`NAVIGATION.md`](NAVIGATION.md) for the current ownership graph, runtime flows,
+  entry points, and sources-of-truth order.
 - Recorder work under `apps/browser-recorder/`: read [`apps/browser-recorder/AGENTS.md`](apps/browser-recorder/AGENTS.md).
 - API work under `apps/relay-api/`: read
   [`apps/relay-api/AGENTS.md`](apps/relay-api/AGENTS.md).

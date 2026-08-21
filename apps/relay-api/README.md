@@ -13,6 +13,10 @@ bucket; PostgreSQL stores their active object keys and safe relational metadata.
 service does not execute workflows itself. New drafts and explicit saves use canonical
 schema `1.5`; stored schema `1.2` and `1.4` documents remain readable for compatibility.
 
+Read [`NAVIGATION.md`](NAVIGATION.md) for the detailed API layers, durable-run flow,
+entry points, and common-change routing. The cross-project execution and dependency
+graph is in [`../../NAVIGATION.md`](../../NAVIGATION.md).
+
 ## Quick start
 
 Requirements:
@@ -328,9 +332,11 @@ The execution service has no authentication and defaults to loopback. Screenshot
 also be enabled on an explicitly trusted private listener, but the service is never safe
 to expose publicly.
 
-## Browser handoff
+## Browser integration
 
-The browser automation client still needs the separate integration described in
-[`../../docs/handoffs/browser-remote-batch-gateway.md`](../../docs/handoffs/browser-remote-batch-gateway.md).
-In summary: remove `AUTOMATION_SERVICE_TOKEN`, use Relay HTTP Basic credentials only at
-the public `RELAY_API_BASE_URL`, and keep batch creation non-retrying.
+Browser Recorder uses Relay HTTP Basic credentials only from its server-side BFF. The
+browser calls same-origin recorder routes; it never receives Relay credentials or the
+private automation-service origin. Folder runs use the namespace-scoped durable run
+routes, and screenshot bytes return through authenticated Relay and recorder proxies.
+Creation remains non-retrying because an uncertain request may already have caused
+external browser actions.

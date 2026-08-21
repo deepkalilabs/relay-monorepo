@@ -5,6 +5,10 @@ the Relay persistence and automation backend. A private root npm workspace and i
 single root lockfile coordinate every Node project without changing application or
 deployment ownership.
 
+Start with [`NAVIGATION.md`](NAVIGATION.md) for the system flow, ownership graph,
+entry points, and change-routing map. Read the root [`AGENTS.md`](AGENTS.md) and the
+nearest project guide before changing files.
+
 ## Projects
 
 | Project | Purpose | Documentation |
@@ -18,11 +22,13 @@ verification. Run `npm ci` only from the repository root; app and package direct
 do not own Node lockfiles. Python remains independently managed under
 `apps/relay-api/`.
 
-The shared replay input contract lives in
-[`packages/workflow-contract/`](packages/workflow-contract/), and provider-neutral
-Playwright phases live in [`packages/replay-core/`](packages/replay-core/). Both are
-consumed through the root workspace. Automation-core delegates execution to replay-core
-from its root-owned package.
+The canonical schema 1.5 workflow contract lives in
+[`packages/workflow-contract/`](packages/workflow-contract/). Provider-neutral
+Playwright phases live in [`packages/replay-core/`](packages/replay-core/), the
+privacy-safe background runner lives in
+[`packages/automation-core/`](packages/automation-core/), and Browserbase lifecycle
+lives in [`packages/automation-worker-browserbase/`](packages/automation-worker-browserbase/).
+All are consumed through the root workspace.
 
 Install and verify all current Node workspaces:
 
@@ -62,9 +68,9 @@ npm run hooks:install
 npm run adr:review -- --none --reason "Routine change; no architectural decision."
 ```
 
-Active plans, archived plans, handoffs, and the workflow specifications are indexed in
-[`docs/README.md`](docs/README.md). Runtime-generated agent state is ignored and must not
-be used as durable project context.
+Repository decisions, archived plans, and agent workflows are indexed in
+[`docs/README.md`](docs/README.md). Runtime-generated agent state is ignored and must
+not be used as durable project context.
 
 ## Quick start
 
@@ -87,13 +93,12 @@ uv run alembic upgrade head
 uv run uvicorn relay_backend.main:app --reload --no-access-log
 ```
 
-The Browserbase automation libraries live under [`packages/`](packages/), and the
-deployable execution service lives under
-[`apps/automation-service-browserbase/`](apps/automation-service-browserbase/).
-Automation-core preserves its fail-fast public facade and privacy-safe results while
-delegating provider-neutral behavior to the shared replay engine. The frontend keeps
-its interactive state machine and delegates the same provider-neutral phases to
-replay-core.
+The recorder's Automations UI sends browser-safe requests to its local BFF. The BFF
+uses Relay credentials server-side; Relay owns authenticated workflow persistence and
+durable run history, then delegates private execution to
+[`apps/automation-service-browserbase/`](apps/automation-service-browserbase/). The
+frontend keeps its interactive replay state machine while both interactive and
+background paths delegate provider-neutral phases to replay-core.
 
 Recorder scripts may run through its root workspace or from `apps/browser-recorder/`
 after the root install. API commands use `apps/relay-api/` as their working directory.
@@ -125,13 +130,13 @@ layout is recorded in
 [`apps/browser-recorder/docs/decisions/0019-use-a-multi-project-monorepo.md`](apps/browser-recorder/docs/decisions/0019-use-a-multi-project-monorepo.md).
 The additive workspace migration is recorded in
 [`apps/browser-recorder/docs/decisions/0021-introduce-root-node-workspace-incrementally.md`](apps/browser-recorder/docs/decisions/0021-introduce-root-node-workspace-incrementally.md).
-The shared replay input and canonical schema `1.4` decision is recorded in
+The original shared replay input and canonical schema `1.4` decision is recorded in
 [`apps/browser-recorder/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md`](apps/browser-recorder/docs/decisions/0022-share-replay-input-and-use-schema-1-4.md).
+The current canonical schema is `1.5`; ADR 0022 remains historical rationale for the
+shared input boundary rather than a statement of the current write version.
 The shared replay execution boundary is recorded in
 [`apps/browser-recorder/docs/decisions/0023-share-replay-execution-primitives.md`](apps/browser-recorder/docs/decisions/0023-share-replay-execution-primitives.md).
-The approved three-increment repository and agent-tooling normalization is recorded in
-[`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md)
-and tracked by
-[`docs/plans/active/relay-monorepo-refactor.md`](docs/plans/active/relay-monorepo-refactor.md).
+The completed three-increment repository and agent-tooling normalization is recorded in
+[`apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md`](apps/browser-recorder/docs/decisions/0024-normalize-monorepo-layout-and-agent-tooling.md).
 The targetless page-text assertion contract and privacy-preserving frame scan are recorded in
 [`apps/browser-recorder/docs/decisions/0025-add-page-text-scan-assertions.md`](apps/browser-recorder/docs/decisions/0025-add-page-text-scan-assertions.md).

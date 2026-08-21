@@ -2,6 +2,8 @@
 
 The root [`AGENTS.md`](../../AGENTS.md) is authoritative for Git safety, ADR review,
 repository-wide tooling, and cross-project verification. Read it before this guide.
+Read the root [`NAVIGATION.md`](../../NAVIGATION.md) for cross-project flows and package
+boundaries before using this project's detailed navigation guide.
 
 Relay Backend is a Python 3.12 FastAPI proof of concept that persists Browser Memory
 Recorder workflow documents in a private S3-compatible bucket and their metadata in
